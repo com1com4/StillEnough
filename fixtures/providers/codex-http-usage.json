@@ -1,0 +1,13 @@
+{
+  "account_id": "synthetic-account",
+  "plan_type": "plus",
+  "rate_limit": {
+    "allowed": true,
+    "limit_reached": false,
+    "primary_window": {"used_percent": 25, "limit_window_seconds": 18000, "reset_at": 1791600000},
+    "secondary_window": {"used_percent": 100, "limit_window_seconds": 604800, "reset_at": 1792000000}
+  },
+  "additional_rate_limits": [
+    {"metered_feature": "synthetic_feature", "rate_limit": {"allowed": true, "limit_reached": false, "primary_window": {"used_percent": 0, "limit_window_seconds": 18000, "reset_at": null}, "secondary_window": null}}
+  ]
+}

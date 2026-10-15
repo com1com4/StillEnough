@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/brand/stillenough.png" />
+    <meta name="theme-color" content="#f6f6f8" />
+    <title>StillEnough · AI 额度与余额监控</title>
+    <script>
+      // Paints the chosen appearance before the first frame. The setting itself
+      // lives in SQLite, which the webview cannot read synchronously, so the last
+      // applied value is cached here purely to avoid a flash of the wrong theme.
+      (function () {
+        try {
+          var cached = localStorage.getItem("stillenough-theme") || "system";
+          var dark =
+            cached === "dark" ||
+            (cached === "system" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.dataset.theme = dark ? "dark" : "light";
+        } catch (error) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,110 @@
+# StillEnough
+
+<p align="center"><img src="public/brand/stillenough.png" width="96" alt="StillEnough Logo" /></p>
+
+**看一眼，安心继续。**
+
+Windows 桌面的 AI 额度与余额监控工具。集中查看多个平台的剩余额度、重置时间和 API 钱包余额，通过托盘与浮窗减少反复打开用量页面的操作。
+
+当前版本为 0.1.0，处于早期开发阶段。平台适配均保持实验性；已实现不等于已通过真实账号与 Windows 完整验收。
+
+## 功能
+
+- 多账号连接、测试读取、手动刷新与后台采集。
+- 订阅额度按窗口分别展示；API 钱包按来源币种展示，不混算。
+- 浮窗：关注账号、拖动排序、1–8 个显示数量、别名/进度条/重置时间开关、置顶与位置恢复。
+- 托盘、开机启动选项、白天/夜间/跟随系统外观。
+- 低额度应用内提醒、7/30 天观测历史、当前指标 JSON/CSV 导出。
+- 全局及账号级网络设置；失败保留上次数据和时间，未知值不推算。
+
+## 平台与验证状态
+
+| 产品 | 查询内容 | 当前状态 |
+|---|---|---|
+| Codex · HTTP | ChatGPT 订阅额度窗口及附加池 | 实验性；有一次真实只读查询记录，完整桌面流程待验证 |
+| Claude Code | 订阅额度窗口 | 实验性；真实账号待验证 |
+| DeepSeek API | 按币种的钱包余额 | 实验性；真实账号待验证 |
+| MiniMax API | 可用金额、现金余额 | 实验性；真实账号待验证，接口未提供币种时显示未知 |
+| MiniMax Token Plan | 通用额度池 5 小时/周窗口 | 实验性；真实账号及地区差异待验证 |
+| 阿里百炼 API | 整个阿里云账号现金余额与可用额度 | 实验性；真实账号待验证，非百炼专属余额 |
+| 阿里百炼个人 Token Plan | 官方 CLI 返回的月额度与重置时间 | 实验性；有真实后台读取记录，官方页面对照待验证 |
+
+Codex app-server 适配器保留用于已有账号管理，暂不开放新增入口。Kimi、GLM、Gemini 等尚未接入。范围、来源和验证记录见 [平台说明](docs/PROVIDERS.md)。
+
+## 使用
+
+首个公开安装包尚待发布。当前可从源码启动，或自行构建 Windows 可执行文件与安装包。
+
+1. 启动应用，点击“添加账号”，选择产品。
+2. 在本机配置 API 凭据，或明确授权读取所选 CLI 的登录来源。
+3. 测试读取并核对账号、额度/金额与重置时间，然后启用保存。
+4. 在设置中选择关注账号、浮窗显示与查询网络。
+
+本工具不提供示例账号或演示数据。尚未成功查询时显示暂无数据/未知；订阅额度与 API 钱包余额是不同指标。
+
+## 从源码运行
+
+Windows 10/11 x64 优先。安装 Node.js、项目指定的 pnpm、Rust stable MSVC、Visual Studio C++ Build Tools 和 WebView2。
+
+依赖由两份锁文件固定；pnpm 版本由 package.json 的 packageManager 指定为 11.9.0。此前开发记录使用 Node.js 22.22.2；本轮本地检查使用 Node.js 24.21.0、Rust/Cargo 1.95.0。这是开发验证记录，不代表最低兼容版本。干净 Windows 安装仍待验证。
+
+在克隆后的项目根目录打开 PowerShell：
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm tauri dev
+```
+
+pnpm dev 只启动前端服务器；账号、凭据和查询需要桌面 Rust 后台。
+
+## 检查与构建
+
+```powershell
+pnpm version:check
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+cargo check --manifest-path src-tauri/Cargo.toml --locked
+cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
+cargo test --manifest-path src-tauri/Cargo.toml --locked
+```
+
+前端测试包含版本脚本、历史分段、展示、主题和浮窗排序；Rust 测试覆盖解析、错误处理、迁移、告警与状态管理。真实账号和 Windows 交互另行验证。
+
+先从托盘退出已运行的程序，再构建：
+
+```powershell
+pnpm tauri build --no-bundle
+# 或生成 Windows NSIS 安装包
+pnpm tauri build --bundles nsis
+```
+
+可执行文件位于 src-tauri/target/release/stillenough.exe，安装包位于 src-tauri/target/release/bundle/nsis/。pnpm build 只构建前端。版本升级见 [版本管理](docs/VERSIONING.md)。
+
+## 数据与隐私
+
+账号配置、设置、观测历史保存在本机 SQLite；API 凭据保存在 Windows 系统凭据库。CLI 来源仅在用户授权后读取，不改写其他 CLI 的登录文件，不使用其 refresh token 刷新登录。
+
+查询连接相应平台，并按所选网络策略使用代理。导出排除凭据、认证路径和原始响应，但别名、观测值及时间仍可能属于个人信息，分享前请检查。
+
+## 已知限制
+
+- 客户端内部接口可能改变或拒绝第三方访问；fixture 不能代替真实账号验证。
+- 默认 CLI 登录来源不提供独立多账号隔离，切换 CLI 账号后需重新核对。
+- 提醒目前仅在应用内显示，尚无 Windows 系统通知。
+- PAC 和带认证的代理未受支持；百炼 CLI 仅使用自身环境，详见平台说明。
+- macOS/Linux、干净 Windows 安装、多屏/DPI、睡眠恢复与新版浮窗拖拽仍需验证。
+
+## 文档与贡献
+
+[产品范围](docs/PRODUCT.md) · [架构](docs/ARCHITECTURE.md) · [平台说明](docs/PROVIDERS.md) · [当前待办](TASKS.md) · [贡献指南](CONTRIBUTING.md) · [安全说明](SECURITY.md)
+
+提交问题请提供版本、产品、复现步骤和脱敏错误码；不要上传 Key、Token、Cookie、认证文件、数据库或未脱敏日志。
+
+## 许可与致谢
+
+源码采用 [MIT License](LICENSE)。第三方图标及依赖保留各自许可，见 [第三方声明](THIRD_PARTY_NOTICES.md)。
+
+平台适配参考官方公开资料与 CodexBar 的接口研究，具体固定提交见适配器文档。本项目为独立工具，不代表平台官方产品或合作关系。
