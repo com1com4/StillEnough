@@ -1,6 +1,6 @@
 # MiniMax Token Plan
 
-2026-10-01：已实现，实验性 / 待真实账号验证。
+更新：2026-10-16。已接入，用户确认真实套餐连接与额度读取成功；套餐、地区覆盖及重置边界仍待专项验证。
 
 来源：[官方 FAQ](https://platform.minimax.io/docs/token-plan/faq)、[中国订阅页面](https://platform.minimaxi.com/subscribe/coding-plan)、[官方 CLI 固定提交](https://github.com/MiniMax-AI/cli/tree/06e47c70b76f419196678367dae62acca4c94076) 的 `src/types/api.ts` 和 `src/client/endpoints.ts`。套餐用量与普通 API 钱包分开。
 
@@ -16,4 +16,4 @@
 
 数值只接受 0–100，不套用未经验证的 boost；计数不推算 tokens。缺失窗口显示未知，两窗口都无有效值则测试失败；重复 general、格式异常返回 schema_changed。到重置点只标待更新，不恢复 100%。base_resp 非零、401/403/429、超时和重定向均不写入假快照。
 
-接口未返回可靠账号身份，按 Key 绑定。凭据复用 Windows 凭据库；fixture 为合成数据。百分比方向、缺失窗口、金额与额度隔离、HTTP 错误/响应上限测试通过。真实套餐、区域、周 boost、两窗口重置与官方页面对照、Windows 主窗口/浮窗交互均待验证。
+接口未返回可靠账号身份，按 Key 绑定。凭据复用 Windows 凭据库；fixture 为合成数据。百分比方向、缺失窗口、金额与额度隔离、HTTP 错误/响应上限测试通过。2026-10-16 用户确认真实套餐连接与额度读取成功；不同套餐/区域、周 boost、两窗口重置与官方页面对照、Windows 完整主窗口/浮窗交互仍待专项验证。

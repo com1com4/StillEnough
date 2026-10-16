@@ -1,6 +1,6 @@
 # MiniMax API 钱包
 
-2026-10-01：已实现，实验性 / 待真实账号验证。
+更新：2026-10-16。已接入，用户确认真实账号连接与余额读取成功；中国/国际两区域的覆盖范围尚未记录。
 
 来源为 [MiniMax 官方 CLI 固定提交](https://github.com/MiniMax-AI/cli/tree/06e47c70b76f419196678367dae62acca4c94076)：`src/client/endpoints.ts`、`src/config/schema.ts`、`src/types/api.ts`、`src/output/balance.ts`。这是客户端账户接口，不宣称为稳定公开 API。
 
@@ -16,4 +16,4 @@
 
 凭据仅进入短期后端会话和 Windows 凭据库，不进入 SQLite、日志或 fixture。固定域名、拒绝重定向、15 秒超时、64 KiB 响应上限；401/403/429 和错误响应只返回脱敏状态，失败保留上次快照和时间。
 
-`fixtures/providers/minimax-balance.json` 为合成数据，非真实响应。离线解析和 HTTP 失败测试通过；真实账号、两区域金额/币种对照和 Windows 表单交互未验证。下一步在本机界面录入 Key，与官方账户页同时对照；不要发送 Key 到聊天。
+`fixtures/providers/minimax-balance.json` 为合成数据，非真实响应。离线解析和 HTTP 失败测试通过。2026-10-16 用户确认真实账号连接与余额读取成功；两区域金额/币种对照和 Windows 完整表单交互仍待专项验证。后续与官方账户页同时对照，不要发送 Key 到聊天。

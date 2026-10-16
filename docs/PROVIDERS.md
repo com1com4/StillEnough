@@ -1,17 +1,19 @@
 # 平台适配与验证
 
-更新：2026-10-16。所有适配器保持实验性，不保证客户端内部接口稳定。
+更新：2026-10-16。当前开放新增连接的七个平台均已接入；阿里百炼两个入口在界面标为实验性。接入状态与真实账号验证范围分别记录，客户端内部接口不保证稳定。
 
-| 产品 / Provider ID | 来源与指标 | 已有证据与限制 |
-|---|---|---|
-| Codex HTTP / codex_http | 授权读取 CLI 文件登录，HTTP 订阅额度 | 2026-10-10 一次真实只读查询；完整桌面流程待验 |
-| Codex app-server / codex | 官方 CLI stdio 限额 | 已有账号保留，新增入口隐藏；历史实测被 PAC-only 阻挡 |
-| Claude Code / claude_code | 授权读取 CLI 登录，客户端 usage | 合成测试；真实账号/计划差异待验 |
-| DeepSeek API / deepseek_api | 官方余额 API | 合成解析/HTTP/持久化；真实账号待验 |
-| MiniMax API / minimax_api | 客户端余额接口 | 合成测试；区域/真实账号待验，无币种不猜测 |
-| MiniMax Token Plan / minimax_token_plan | 套餐 remains 接口 | 合成测试；真实窗口/区域待验 |
-| 百炼 API / bailian_api | 官方阿里云账户余额 | 合成测试；签名/权限/真实金额待验，非百炼独立钱包 |
-| 百炼个人 Token Plan / bailian_token_plan | 官方 CLI 个人套餐 | 有真实后台月额度读取；控制台数值/重置对照待验 |
+| 产品 / Provider ID | 接入状态 | 来源与指标 | 已记录的验证证据与限制 |
+|---|---|---|---|
+| Codex HTTP / codex_http | 已接入，用户实测读取成功 | 授权读取 CLI 文件登录，HTTP 订阅额度 | 2026-10-16 用户确认已连接并成功读取；另有 2026-10-10 真实只读查询记录 |
+| Codex app-server / codex | 仅保留已有连接 | 官方 CLI stdio 限额 | 新增入口隐藏；历史实测被 PAC-only 阻挡 |
+| Claude Code / claude_code | 已接入 | 授权读取 CLI 登录，客户端 usage | 合成测试；真实账号/计划差异待验 |
+| DeepSeek API / deepseek_api | 已接入，用户实测读取成功 | 官方余额 API | 2026-10-16 用户确认已连接并成功读取；跨币种及官方页面对照未记录 |
+| MiniMax API / minimax_api | 已接入，用户实测读取成功 | 客户端余额接口 | 2026-10-16 用户确认已连接并成功读取；两区域覆盖未记录，无币种不猜测 |
+| MiniMax Token Plan / minimax_token_plan | 已接入，用户实测读取成功 | 套餐 remains 接口 | 2026-10-16 用户确认已连接并成功读取；套餐/区域覆盖及重置边界待验 |
+| 百炼 API / bailian_api | 已接入 · 实验性 | 官方阿里云账户余额 | 合成测试；签名/权限/真实金额待验，非百炼独立钱包 |
+| 百炼个人 Token Plan / bailian_token_plan | 已实测读取成功，登录体验待改善 | 官方 CLI 个人套餐 | 2026-10-16 用户反馈登录 Token 容易过期，影响持续使用；不是查询请求超时；控制台数值/重置对照待验 |
+
+本次用户确认仅覆盖所用账号的连接与读取，不代表所有套餐、地区、重置边界或完整桌面流程已验证。“阿里”的反馈按个人 Token Plan 的官方 CLI 登录来源记录，不扩展为阿里云 AccessKey 账户余额已实测。
 
 详情：[Codex HTTP](providers/codex-http.md)、[Codex app-server](providers/codex.md)、[Claude](providers/claude_code.md)、[DeepSeek](providers/deepseek_api.md)、[MiniMax API](providers/minimax_api.md)、[MiniMax Token Plan](providers/minimax_token_plan.md)、[百炼 API](providers/bailian_api.md)、[百炼个人 Token Plan](providers/bailian_token_plan.md)。
 

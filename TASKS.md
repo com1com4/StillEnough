@@ -14,10 +14,13 @@
 
 ## 真实平台
 
-- [ ] Codex HTTP 完整桌面流程、自动刷新/重启、官方页面窗口/重置对照；已有一次真实只读查询。
+- [x] Codex HTTP、DeepSeek API、MiniMax API/Token Plan 真实账号连接与读取：2026-10-16 用户确认成功，具体套餐/地区覆盖未记录。
+- [ ] Codex HTTP 完整桌面流程、自动刷新/重启、官方页面窗口/重置对照。
 - [ ] Claude 真实订阅、权限、过期及计划差异。
-- [ ] DeepSeek、MiniMax API/Token Plan、百炼 API 真实账号、币种/区域/权限与页面对照。
-- [ ] 百炼个人 Token Plan 控制台数值/重置对照、干净 Windows CLI 检测；已有真实后台月额度读取。
+- [ ] DeepSeek、MiniMax API/Token Plan 币种/区域/权限与页面对照；百炼 API 真实账号读取待验证。
+- [x] 百炼个人 Token Plan 真实读取：已有后台记录，2026-10-16 用户确认成功。
+- [ ] 百炼个人 Token Plan 登录 Token 容易过期、重新登录体验较差：2026-10-16 用户反馈，具体有效期及过期处理待排查，不是查询请求超时。
+- [ ] 百炼个人 Token Plan 控制台数值/重置对照、干净 Windows CLI 检测。
 - [ ] CLI 切换身份后的连接核对。
 
 ## Windows 与发布
