@@ -445,6 +445,8 @@ pub fn apply_widget_visibility(
 }
 
 fn record_widget_visibility(app: &AppHandle, state: &AppState, actual: bool) -> Result<(), String> {
+    // Native visibility already changed, even if saving the preference fails.
+    crate::set_tray_widget_label(actual);
     let mut settings = lock(&state.settings)?;
     if settings.widget_visible == actual {
         return Ok(());

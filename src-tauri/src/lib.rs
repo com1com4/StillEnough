@@ -18,6 +18,27 @@ use tauri::{
 /// keeps the menu code out of the unit-test binary, which has no SxS manifest
 /// and therefore cannot resolve comctl32 v6's `TaskDialogIndirect`.
 static TRAY_PAUSE: OnceLock<Mutex<Option<MenuItem<tauri::Wry>>>> = OnceLock::new();
+static TRAY_WIDGET: OnceLock<Mutex<Option<MenuItem<tauri::Wry>>>> = OnceLock::new();
+
+pub(crate) fn set_tray_widget_label(visible: bool) {
+    if let Some(slot) = TRAY_WIDGET.get() {
+        if let Ok(item) = slot.lock() {
+            if let Some(item) = item.as_ref() {
+                let _ = item.set_text(if visible {
+                    "隐藏浮窗"
+                } else {
+                    "显示浮窗"
+                });
+            }
+        }
+    }
+}
+
+fn widget_is_visible(app: &tauri::AppHandle) -> bool {
+    app.get_webview_window("widget")
+        .and_then(|window| window.is_visible().ok())
+        .unwrap_or(false)
+}
 
 /// Points the tray label at the action the menu will actually perform next.
 pub(crate) fn set_tray_pause_label(paused: bool) {
@@ -67,6 +88,7 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
         ],
     )?;
     let mut builder = TrayIconBuilder::new()
+        .tooltip("StillEnough · AI 额度与余额监控")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
@@ -94,11 +116,7 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
                 let handle = app.clone();
                 tauri::async_runtime::spawn(async move {
                     if let Some(state) = handle.try_state::<AppState>() {
-                        let visible = state
-                            .settings
-                            .lock()
-                            .map(|settings| !settings.widget_visible)
-                            .unwrap_or(true);
+                        let visible = !widget_is_visible(&handle);
                         let _ = commands::set_widget_visible(visible, handle.clone(), state).await;
                     }
                 });
@@ -123,6 +141,10 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
     if let Ok(mut slot) = TRAY_PAUSE.get_or_init(|| Mutex::new(None)).lock() {
         *slot = Some(pause);
     }
+    if let Ok(mut slot) = TRAY_WIDGET.get_or_init(|| Mutex::new(None)).lock() {
+        *slot = Some(widget);
+    }
+    set_tray_widget_label(widget_is_visible(app.handle()));
     Ok(())
 }
 
