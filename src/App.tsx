@@ -559,38 +559,38 @@ function App() {
           </div>
         </header>
 
-        {alertPanel && (
-          <section className="alert-panel" aria-label={t("alerts.title")}>
-            <div className="alert-panel-head">
-              <strong>{t("alerts.title")}</strong>
-              <div className="alert-panel-actions">
-                <button className="text-button" disabled={!unread} onClick={() => void markAllAlerts()}>
-                  <CheckIcon /> {t("alerts.markAll")}
-                </button>
-                <button className="text-button" onClick={() => setAlertPanel(false)}>
-                  {t("common.close")}
-                </button>
+        <section className="content-area" key={activePage}>
+          {alertPanel && (
+            <section className="alert-panel" aria-label={t("alerts.title")}>
+              <div className="alert-panel-head">
+                <strong>{t("alerts.title")}</strong>
+                <div className="alert-panel-actions">
+                  <button className="text-button" disabled={!unread} onClick={() => void markAllAlerts()}>
+                    <CheckIcon /> {t("alerts.markAll")}
+                  </button>
+                  <button className="text-button" onClick={() => setAlertPanel(false)}>
+                    {t("common.close")}
+                  </button>
+                </div>
               </div>
-            </div>
-            {alerts.length ? (
-              <ul className="alert-list">
-                {alerts.map((event) => (
-                  <li key={event.id} className={event.readAt ? "alert-item read" : "alert-item"}>
-                    <button onClick={() => void markAlert(event.id)}>
-                      <span className="alert-title">{alertHeadline(event)}</span>
-                      <span className="alert-detail">{alertDetail(event)}</span>
-                      <span className="alert-time">{alertTime(event.triggeredAt, now)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="alert-empty">{t("alerts.empty")}</p>
-            )}
-          </section>
-        )}
+              {alerts.length ? (
+                <ul className="alert-list">
+                  {alerts.map((event) => (
+                    <li key={event.id} className={event.readAt ? "alert-item read" : "alert-item"}>
+                      <button onClick={() => void markAlert(event.id)}>
+                        <span className="alert-title">{alertHeadline(event)}</span>
+                        <span className="alert-detail">{alertDetail(event)}</span>
+                        <span className="alert-time">{alertTime(event.triggeredAt, now)}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="alert-empty">{t("alerts.empty")}</p>
+              )}
+            </section>
+          )}
 
-        <section className="content-area">
           {error && (
             <div className="callout error-callout">
               <span>!</span>
