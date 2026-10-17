@@ -102,6 +102,79 @@ pub struct AppSettings {
     pub widget_display: WidgetDisplay,
     #[serde(default, deserialize_with = "theme_from_stored")]
     pub theme: ThemeMode,
+    #[serde(default, deserialize_with = "language_from_stored")]
+    pub language: LanguagePreference,
+    /// Runtime value, always recomputed rather than trusted from stored JSON.
+    #[serde(skip_deserializing)]
+    pub resolved_language: String,
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum LanguagePreference {
+    #[default]
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "zh-CN")]
+    Chinese,
+    #[serde(rename = "en")]
+    English,
+}
+
+impl LanguagePreference {
+    pub fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "system" => Ok(Self::System),
+            "zh-CN" => Ok(Self::Chinese),
+            "en" => Ok(Self::English),
+            _ => Err("invalid_language".into()),
+        }
+    }
+
+    pub fn resolve(self) -> &'static str {
+        match self {
+            Self::Chinese => "zh-CN",
+            Self::English => "en",
+            Self::System => system_language(),
+        }
+    }
+}
+
+fn language_from_stored<'de, D>(deserializer: D) -> Result<LanguagePreference, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(value
+        .as_str()
+        .and_then(|s| LanguagePreference::parse(s).ok())
+        .unwrap_or_default())
+}
+
+#[cfg(windows)]
+fn system_language() -> &'static str {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetUserDefaultUILanguage() -> u16;
+    }
+    // LANGID's low ten bits are the primary language; 0x04 is Chinese.
+    if unsafe { GetUserDefaultUILanguage() } & 0x03ff == 0x04 {
+        "zh-CN"
+    } else {
+        "en"
+    }
+}
+
+#[cfg(not(windows))]
+fn system_language() -> &'static str {
+    let locale = ["LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .find_map(|name| std::env::var(name).ok().filter(|value| !value.is_empty()))
+        .unwrap_or_default();
+    if locale.to_ascii_lowercase().starts_with("zh") {
+        "zh-CN"
+    } else {
+        "en"
+    }
 }
 
 /// A theme this build does not know about falls back to following the OS.
@@ -175,12 +248,15 @@ impl Default for AppSettings {
             widget_accounts: None,
             widget_display: WidgetDisplay::default(),
             theme: ThemeMode::default(),
+            language: LanguagePreference::default(),
+            resolved_language: LanguagePreference::default().resolve().into(),
         }
     }
 }
 impl AppSettings {
     /// Stored JSON from an older build must not silently widen alerting or retention.
     pub fn sanitize(mut self) -> Self {
+        self.resolved_language = self.language.resolve().into();
         if !matches!(self.refresh_minutes, 5 | 10 | 15 | 30) {
             self.refresh_minutes = 10;
         }
@@ -309,6 +385,60 @@ pub struct ExportSummary {
     pub path: String,
     pub account_count: usize,
     pub row_count: usize,
+}
+
+#[cfg(test)]
+mod language_tests {
+    use super::*;
+
+    #[test]
+    fn old_and_unknown_language_values_preserve_other_preferences() {
+        for value in ["null", "42", "{}", "\"fr\"", "\"\""] {
+            let json = format!(
+                r#"{{"refreshMinutes":15,"widgetVisible":true,"language":{value},"resolvedLanguage":"untrusted"}}"#
+            );
+            let settings = serde_json::from_str::<AppSettings>(&json)
+                .unwrap()
+                .sanitize();
+            assert_eq!(settings.language, LanguagePreference::System);
+            assert_eq!(settings.refresh_minutes, 15);
+            assert!(settings.widget_visible);
+            assert_eq!(
+                settings.resolved_language,
+                LanguagePreference::System.resolve()
+            );
+        }
+        let settings =
+            serde_json::from_str::<AppSettings>(r#"{"refreshMinutes":30,"widgetVisible":false}"#)
+                .unwrap()
+                .sanitize();
+        assert_eq!(settings.language, LanguagePreference::System);
+        assert_eq!(settings.refresh_minutes, 30);
+    }
+
+    #[test]
+    fn language_preferences_round_trip_and_resolve_consistently() {
+        for (value, resolved) in [
+            ("zh-CN", "zh-CN"),
+            ("en", "en"),
+            ("system", LanguagePreference::System.resolve()),
+        ] {
+            let settings = AppSettings {
+                language: LanguagePreference::parse(value).unwrap(),
+                ..AppSettings::default()
+            }
+            .sanitize();
+            let stored = serde_json::to_string(&settings).unwrap();
+            let reloaded = serde_json::from_str::<AppSettings>(&stored)
+                .unwrap()
+                .sanitize();
+            assert_eq!(reloaded.language, settings.language);
+            assert_eq!(reloaded.resolved_language, resolved);
+            assert!(stored.contains(&format!(r#""language":"{value}""#)));
+        }
+        assert!(LanguagePreference::parse("fr").is_err());
+        assert!(LanguagePreference::parse("English").is_err());
+    }
 }
 
 #[cfg(test)]

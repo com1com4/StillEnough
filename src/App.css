@@ -1080,6 +1080,17 @@ button:disabled {
   gap: 18px;
   border-bottom: 1px solid var(--line-soft);
 }
+.settings-row > div {
+  min-width: 0;
+}
+.settings-row > select,
+.settings-row > button,
+.settings-row > .switch {
+  flex-shrink: 0;
+}
+.settings-row > div > span {
+  overflow-wrap: anywhere;
+}
 .settings-row:last-child {
   border-bottom: 0;
 }

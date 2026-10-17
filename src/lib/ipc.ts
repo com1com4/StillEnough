@@ -33,11 +33,12 @@ export const api = {
   settings: () => desktopCommand<AppSettings>("get_settings"),
   updateRefreshInterval: (minutes: number) =>
     desktopCommand<AppSettings>("update_refresh_interval", { minutes }),
-  setCollectionPaused: (paused: boolean) =>
-    desktopCommand<AppSettings>("set_collection_paused", { paused }),
+  setCollectionPaused: (paused: boolean) => desktopCommand<AppSettings>("set_collection_paused", { paused }),
   stateRevision: () => desktopCommand<number>("state_revision"),
   setAutostart: (enabled: boolean) => desktopCommand<AppSettings>("set_autostart", { enabled }),
   setTheme: (theme: string) => desktopCommand<AppSettings>("set_theme", { theme }),
+  setLanguage: (language: import("./i18n").LanguagePreference) =>
+    desktopCommand<AppSettings>("set_language", { language }),
   syncNativeTheme: (dark: boolean) => desktopCommand<void>("sync_native_theme", { dark }),
   setWidgetOptions: (options: WidgetOptions) =>
     desktopCommand<AppSettings>("set_widget_options", { options }),

@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import { api } from "./ipc";
 
 export type ThemeMode = "system" | "light" | "dark";
@@ -18,14 +19,14 @@ export function resolveTheme(mode: ThemeMode): ResolvedTheme {
   return systemPrefersDark() ? "dark" : "light";
 }
 
-const THEME_OPTIONS: { value: ThemeMode; label: string; hint: string }[] = [
-  { value: "system", label: "跟随系统", hint: "随 Windows 的应用外观切换" },
-  { value: "light", label: "白天", hint: "始终使用浅色" },
-  { value: "dark", label: "夜间", hint: "始终使用深色" },
+const themeOptionValues = (): { value: ThemeMode; label: string; hint: string }[] => [
+  { value: "system", label: t("common.system"), hint: t("theme.systemHelp") },
+  { value: "light", label: t("theme.light"), hint: t("theme.lightHelp") },
+  { value: "dark", label: t("theme.dark"), hint: t("theme.darkHelp") },
 ];
 
 export function themeOptions(): { value: ThemeMode; label: string; hint: string }[] {
-  return THEME_OPTIONS;
+  return themeOptionValues();
 }
 
 /**

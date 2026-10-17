@@ -21,6 +21,8 @@ Tauri 2 承载主窗口、浮窗、托盘与菜单；React/TypeScript 负责交�
 
 UI 不直接访问厂商、认证文件或 SQLite。主窗口与浮窗共享 AppState；变更增加单调 revision 并广播 state-changed，避免旧读取覆盖新状态。能力文件见 src-tauri/capabilities/，敏感管理命令另检查 main 窗口。
 
+多语言展示集中在 src/lib/locales.ts、i18n.ts 和 providerPresentation.ts，以语义 key 和命名参数维护中英文资源，不新增运行时依赖。AppSettings.language 保存 system/zh-CN/en 偏好；resolvedLanguage 由 Rust 根据偏好与系统 UI 语言解析，忽略存储中的旧解析值。主窗口专用 set_language 命令先持久化再更新托盘并广播，两个 WebView 按后台设置重绘，Intl 使用所选语言和本地时区。旧语言字段异常仅回退该字段，保留其他偏好。
+
 ## 契约
 
 前端类型见 src/lib/types.ts，Rust 类型见 domain/models.rs。AccountInput 只接收账号、产品、地址、启用、CLI 授权与网络配置，拒绝未知字段，不接受指标写入。

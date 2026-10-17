@@ -19,15 +19,49 @@ use tauri::{
 /// and therefore cannot resolve comctl32 v6's `TaskDialogIndirect`.
 static TRAY_PAUSE: OnceLock<Mutex<Option<MenuItem<tauri::Wry>>>> = OnceLock::new();
 static TRAY_WIDGET: OnceLock<Mutex<Option<MenuItem<tauri::Wry>>>> = OnceLock::new();
+static TRAY_OTHER: OnceLock<Vec<MenuItem<tauri::Wry>>> = OnceLock::new();
+static TRAY_ENGLISH: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn tray_text(zh: &'static str, en: &'static str) -> &'static str {
+    if TRAY_ENGLISH.load(std::sync::atomic::Ordering::Relaxed) {
+        en
+    } else {
+        zh
+    }
+}
+
+pub(crate) fn update_tray_language(app: &tauri::AppHandle, settings: &domain::models::AppSettings) {
+    TRAY_ENGLISH.store(
+        settings.resolved_language == "en",
+        std::sync::atomic::Ordering::Relaxed,
+    );
+    if let Some(items) = TRAY_OTHER.get() {
+        for (item, (zh, en)) in items.iter().zip([
+            ("打开 StillEnough", "Open StillEnough"),
+            ("刷新额度", "Refresh quotas"),
+            ("退出", "Quit"),
+        ]) {
+            let _ = item.set_text(tray_text(zh, en));
+        }
+    }
+    set_tray_pause_label(settings.collection_paused);
+    set_tray_widget_label(widget_is_visible(app));
+    if let Some(tray) = app.tray_by_id("main-tray") {
+        let _ = tray.set_tooltip(Some(tray_text(
+            "StillEnough · AI 额度与余额监控",
+            "StillEnough · AI quotas & balances",
+        )));
+    }
+}
 
 pub(crate) fn set_tray_widget_label(visible: bool) {
     if let Some(slot) = TRAY_WIDGET.get() {
         if let Ok(item) = slot.lock() {
             if let Some(item) = item.as_ref() {
                 let _ = item.set_text(if visible {
-                    "隐藏浮窗"
+                    tray_text("隐藏浮窗", "Hide widget")
                 } else {
-                    "显示浮窗"
+                    tray_text("显示浮窗", "Show widget")
                 });
             }
         }
@@ -46,9 +80,9 @@ pub(crate) fn set_tray_pause_label(paused: bool) {
         if let Ok(item) = slot.lock() {
             if let Some(item) = item.as_ref() {
                 let _ = item.set_text(if paused {
-                    "恢复额度采集"
+                    tray_text("恢复额度采集", "Resume collection")
                 } else {
-                    "暂停额度采集"
+                    tray_text("暂停额度采集", "Pause collection")
                 });
             }
         }
@@ -87,7 +121,7 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
             &open, &refresh, &widget, &separator, &pause, &separator, &quit,
         ],
     )?;
-    let mut builder = TrayIconBuilder::new()
+    let mut builder = TrayIconBuilder::with_id("main-tray")
         .tooltip("StillEnough · AI 额度与余额监控")
         .menu(&menu)
         .show_menu_on_left_click(false)
@@ -138,13 +172,16 @@ fn create_tray(app: &tauri::App) -> tauri::Result<()> {
         builder = builder.icon(icon.clone());
     }
     builder.build(app)?;
+    let _ = TRAY_OTHER.set(vec![open, refresh, quit]);
     if let Ok(mut slot) = TRAY_PAUSE.get_or_init(|| Mutex::new(None)).lock() {
         *slot = Some(pause);
     }
     if let Ok(mut slot) = TRAY_WIDGET.get_or_init(|| Mutex::new(None)).lock() {
         *slot = Some(widget);
     }
-    set_tray_widget_label(widget_is_visible(app.handle()));
+    if let Ok(settings) = app.state::<AppState>().settings.lock() {
+        update_tray_language(app.handle(), &settings);
+    }
     Ok(())
 }
 
@@ -209,6 +246,7 @@ pub fn run() {
             commands::state_revision,
             commands::set_autostart,
             commands::set_theme,
+            commands::set_language,
             commands::sync_native_theme,
             commands::set_widget_options,
             commands::set_widget_visible,

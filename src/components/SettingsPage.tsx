@@ -1,3 +1,5 @@
+import { providerName } from "../lib/providerPresentation";
+import { t, currentLanguage } from "../lib/i18n";
 import { NetworkSettings } from "./NetworkSettings";
 import { useRef, useState } from "react";
 import { reorderWidgetAccounts } from "../lib/widgetOrder";
@@ -7,6 +9,7 @@ import { api } from "../lib/ipc";
 import type { Account, AppSettings, WidgetOptions } from "../lib/types";
 import { themeOptions, resolveTheme } from "../lib/theme";
 import type { ThemeMode } from "../lib/theme";
+import type { LanguagePreference } from "../lib/i18n";
 
 const THRESHOLD_OPTIONS = [50, 30, 20, 10, 5, 3];
 const RETENTION_OPTIONS = [30, 60, 90];
@@ -20,6 +23,7 @@ export function SettingsPage({
   onAutostartChange,
   onWidgetOptions,
   onThemeChange,
+  onLanguageChange,
   onNotice,
   onError,
   onCleared,
@@ -32,6 +36,7 @@ export function SettingsPage({
   onAutostartChange: (enabled: boolean) => Promise<void>;
   onWidgetOptions: (options: WidgetOptions) => Promise<void>;
   onThemeChange: (theme: ThemeMode) => Promise<void>;
+  onLanguageChange: (language: LanguagePreference) => Promise<void>;
   onNotice: (message: string) => void;
   onError: (message: string) => void;
   onCleared: () => void;
@@ -80,7 +85,8 @@ export function SettingsPage({
   }
 
   const [clearText, setClearText] = useState("");
-  const [confirmClear, setConfirmClear] = useState(false);
+  const confirmClear = clearText === (currentLanguage() === "en" ? "DELETE ALL DATA" : "删除全部数据");
+  const [languageBusy, setLanguageBusy] = useState(false);
 
   function toggleThreshold(value: number) {
     setThresholds((current) =>
@@ -101,7 +107,7 @@ export function SettingsPage({
       setThresholds(saved.alertThresholds);
       setAlertEnabled(saved.alertEnabled);
       setRetention(saved.historyRetentionDays);
-      onNotice("额度提醒与历史设置已保存");
+      onNotice(t("monitoring.saved"));
     } catch (reason) {
       onError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -113,34 +119,39 @@ export function SettingsPage({
     setBusy(true);
     try {
       const summary = await api.exportData(format);
-      onNotice(`已导出 ${summary.accountCount} 个账号、${summary.rowCount} 行到 ${summary.fileName}`);
+      onNotice(
+        t("data.exported", {
+          accounts: summary.accountCount,
+          rows: summary.rowCount,
+          file: summary.fileName,
+        }),
+      );
       try {
         await revealItemInDir(summary.path);
       } catch {
         // The file exists either way; failing to open Explorer must not fail the export.
       }
     } catch (reason) {
-      onError(reason instanceof Error ? reason.message : "导出失败");
+      onError(reason instanceof Error ? reason.message : t("error.export"));
     } finally {
       setBusy(false);
     }
   }
 
   async function clearAll() {
-    if (!window.confirm("这会删除本工具保存的全部账号、历史和提醒，并清理系统凭据。确定继续？")) {
-      setConfirmClear(false);
+    if (!confirmClear) return;
+    if (!window.confirm(t("data.confirm"))) {
       setClearText("");
       return;
     }
     setBusy(true);
     try {
-      const removed = await api.clearAllData(clearText);
+      const removed = await api.clearAllData("删除全部数据");
       setClearText("");
-      setConfirmClear(false);
-      onNotice(`已删除 ${removed} 个账号及其本工具数据`);
+      onNotice(t("data.deleted", { count: removed }));
       onCleared();
     } catch (reason) {
-      onError(reason instanceof Error ? reason.message : "删除失败");
+      onError(reason instanceof Error ? reason.message : t("error.delete"));
     } finally {
       setBusy(false);
     }
@@ -148,19 +159,41 @@ export function SettingsPage({
 
   return (
     <div className="secondary-page">
+      <section className="settings-card">
+        <div className="settings-row">
+          <div>
+            <strong>{t("language.title")}</strong>
+            <span>{t("language.help")}</span>
+          </div>
+          <select
+            aria-label={t("language.title")}
+            value={settings.language}
+            disabled={languageBusy}
+            onChange={(event) => {
+              setLanguageBusy(true);
+              void onLanguageChange(event.target.value as LanguagePreference).finally(() =>
+                setLanguageBusy(false),
+              );
+            }}
+          >
+            <option value="system">{t("common.system")} / System</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+      </section>
       <NetworkSettings accounts={accounts} />
       <div className="settings-card">
         <div className="settings-row column">
           <div>
-            <strong>外观</strong>
+            <strong>{t("theme.title")}</strong>
             <span>
-              {settings.theme === "system"
-                ? `跟随系统，当前为${resolveTheme(settings.theme) === "dark" ? "夜间" : "白天"}模式`
-                : `已固定为${resolveTheme(settings.theme) === "dark" ? "夜间" : "白天"}模式`}
-              。切换后立即生效，不需要重启。
+              {t(settings.theme === "system" ? "theme.systemStatus" : "theme.fixedStatus", {
+                mode: resolveTheme(settings.theme) === "dark" ? t("theme.dark") : t("theme.light"),
+              })}
             </span>
           </div>
-          <div className="theme-picker" role="group" aria-label="外观">
+          <div className="theme-picker" role="group" aria-label={t("theme.title")}>
             {themeOptions().map((option) => (
               <button
                 key={option.value}
@@ -179,23 +212,23 @@ export function SettingsPage({
       <div className="settings-card">
         <div className="settings-row">
           <div>
-            <strong>自动刷新间隔</strong>
-            <span>按此间隔刷新已启用的账号。</span>
+            <strong>{t("refresh.interval")}</strong>
+            <span>{t("refresh.intervalHelp")}</span>
           </div>
           <select
             value={settings.refreshMinutes}
             onChange={(event) => void onRefreshInterval(Number(event.target.value))}
           >
-            <option value={5}>每 5 分钟</option>
-            <option value={10}>每 10 分钟</option>
-            <option value={15}>每 15 分钟</option>
-            <option value={30}>每 30 分钟</option>
+            <option value={5}>{t("refresh.every5")}</option>
+            <option value={10}>{t("refresh.every10")}</option>
+            <option value={15}>{t("refresh.every15")}</option>
+            <option value={30}>{t("refresh.every30")}</option>
           </select>
         </div>
         <div className="settings-row">
           <div>
-            <strong>暂停采集</strong>
-            <span>停止后台自动刷新，已记录的额度和历史保留；手工刷新仍可使用。</span>
+            <strong>{t("collection.pause")}</strong>
+            <span>{t("collection.help")}</span>
           </div>
           <label className="switch">
             <input
@@ -203,13 +236,13 @@ export function SettingsPage({
               checked={settings.collectionPaused}
               onChange={(event) => void onPauseChange(event.target.checked)}
             />
-            <span>{settings.collectionPaused ? "已暂停" : "采集中"}</span>
+            <span>{settings.collectionPaused ? t("collection.paused") : t("collection.active")}</span>
           </label>
         </div>
         <div className="settings-row">
           <div>
-            <strong>开机自动启动</strong>
-            <span>在当前 Windows 用户下登录时启动，不写入其他用户或系统级配置。</span>
+            <strong>{t("autostart.title")}</strong>
+            <span>{t("autostart.help")}</span>
           </div>
           <label className="switch">
             <input
@@ -217,27 +250,27 @@ export function SettingsPage({
               checked={settings.autostart}
               onChange={(event) => void onAutostartChange(event.target.checked)}
             />
-            <span>{settings.autostart ? "已开启" : "已关闭"}</span>
+            <span>{settings.autostart ? t("common.enabled") : t("common.disabled")}</span>
           </label>
         </div>
         <div className="settings-row">
           <div>
-            <strong>额度浮窗</strong>
-            <span>在桌面置顶查看关注账号。</span>
+            <strong>{t("widget.title")}</strong>
+            <span>{t("widget.help")}</span>
           </div>
           <button className="button button-quiet" onClick={() => void onToggleWidget()}>
-            {settings.widgetVisible ? "隐藏浮窗" : "显示浮窗"}
+            {settings.widgetVisible ? t("widget.hide") : t("widget.show")}
           </button>
         </div>
         <div className="settings-row">
           <div>
-            <strong>浮窗透明度</strong>
-            <span>调低后浮窗内容会整体变淡，便于看穿下面的窗口。</span>
+            <strong>{t("widget.opacity")}</strong>
+            <span>{t("widget.opacityHelp")}</span>
           </div>
           <div className="settings-inline">
             <input
               type="range"
-              aria-label="浮窗透明度"
+              aria-label={t("widget.opacity")}
               min={50}
               max={100}
               step={5}
@@ -256,15 +289,15 @@ export function SettingsPage({
         </div>
         <div className="settings-row column">
           <div>
-            <strong>浮窗显示内容</strong>
-            <span>修改后立即保存。异常和过期状态始终显示。</span>
+            <strong>{t("widget.content")}</strong>
+            <span>{t("widget.contentHelp")}</span>
           </div>
           <div className="settings-inline">
             {(
               [
-                ["showAlias", "账号别名"],
-                ["showProgress", "额度进度条"],
-                ["showReset", "重置时间"],
+                ["showAlias", t("account.alias")],
+                ["showProgress", t("widget.progress")],
+                ["showReset", t("metric.resetTime")],
               ] as const
             ).map(([key, label]) => (
               <label className="switch" key={key}>
@@ -285,9 +318,9 @@ export function SettingsPage({
               </label>
             ))}
             <label>
-              显示账号数{" "}
+              {t("widget.accountCount")}{" "}
               <select
-                aria-label="浮窗显示账号数"
+                aria-label={t("widget.accountCountLabel")}
                 value={settings.widgetDisplay.maxAccounts}
                 onChange={(event) =>
                   void onWidgetOptions({
@@ -301,7 +334,7 @@ export function SettingsPage({
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((count) => (
                   <option key={count} value={count}>
-                    {count} 个
+                    {count} {t("common.countUnit")}
                   </option>
                 ))}
               </select>
@@ -310,12 +343,14 @@ export function SettingsPage({
         </div>
         <div className="settings-row column">
           <div>
-            <strong>浮窗关注账号</strong>
-            <span>
-              不勾选时按接近限额自动排序；勾选后拖动左侧手柄或用上移、下移调整顺序。松开后自动保存，超出显示数量的账号暂不展示。
-            </span>
+            <strong>{t("widget.accounts")}</strong>
+            <span>{t("widget.accountsHelp")}</span>
           </div>
-          <div className="widget-account-picker widget-account-list" role="group" aria-label="浮窗关注账号">
+          <div
+            className="widget-account-picker widget-account-list"
+            role="group"
+            aria-label={t("widget.accounts")}
+          >
             {widgetAccountChoices.map((account) => {
               const selected = selectedWidgetAccounts;
               const index = selected.indexOf(account.id);
@@ -330,8 +365,8 @@ export function SettingsPage({
                     type="button"
                     className="widget-drag-handle"
                     disabled={!checked || widgetOrderBusy || selected.length < 2}
-                    aria-label={`拖动排序 ${account.alias}`}
-                    title="按住拖动调整顺序；也可使用右侧上移、下移"
+                    aria-label={t("widget.dragAccount", { alias: account.alias })}
+                    title={t("widget.dragHelp")}
                     onPointerDown={(event) => {
                       if (event.button !== 0 || !checked || widgetOrderBusy) return;
                       event.preventDefault();
@@ -392,7 +427,7 @@ export function SettingsPage({
                     <span>
                       {checked ? `${index + 1}. ` : ""}
                       {account.alias}
-                      <small>{account.productName}</small>
+                      <small>{providerName(account.providerId, account.productName)}</small>
                     </span>
                   </label>
                   {checked && (
@@ -400,27 +435,27 @@ export function SettingsPage({
                       <button
                         type="button"
                         className="button button-quiet"
-                        aria-label={`上移 ${account.alias}`}
+                        aria-label={t("widget.moveUpAccount", { alias: account.alias })}
                         disabled={widgetOrderBusy || index === 0}
                         onClick={() => moveWidgetAccount(index, -1)}
                       >
-                        上移
+                        {t("common.moveUp")}
                       </button>
                       <button
                         type="button"
                         className="button button-quiet"
-                        aria-label={`下移 ${account.alias}`}
+                        aria-label={t("widget.moveDownAccount", { alias: account.alias })}
                         disabled={widgetOrderBusy || index === selected.length - 1}
                         onClick={() => moveWidgetAccount(index, 1)}
                       >
-                        下移
+                        {t("common.moveDown")}
                       </button>
                     </div>
                   )}
                 </div>
               );
             })}
-            {!accounts.length && <span className="settings-hint">还没有账号。</span>}
+            {!accounts.length && <span className="settings-hint">{t("account.empty")}</span>}
           </div>
           {settings.widgetAccounts !== null && (
             <button
@@ -428,7 +463,7 @@ export function SettingsPage({
               disabled={widgetOrderBusy}
               onClick={() => void saveWidgetAccounts(null)}
             >
-              恢复自动排序
+              {t("widget.autoOrder")}
             </button>
           )}
         </div>
@@ -437,8 +472,8 @@ export function SettingsPage({
       <div className="settings-card">
         <div className="settings-row column">
           <div>
-            <strong>低额度提醒</strong>
-            <span>只对能读到剩余百分比的额度窗口提醒；一次下跌只提醒最严重的一档，余额不按百分比提醒。</span>
+            <strong>{t("alerts.lowQuota")}</strong>
+            <span>{t("alerts.help")}</span>
           </div>
           <div className="settings-inline">
             <label className="switch">
@@ -447,9 +482,9 @@ export function SettingsPage({
                 checked={alertEnabled}
                 onChange={(event) => setAlertEnabled(event.target.checked)}
               />
-              <span>{alertEnabled ? "已开启" : "已关闭"}</span>
+              <span>{alertEnabled ? t("common.enabled") : t("common.disabled")}</span>
             </label>
-            <div className="threshold-picker" role="group" aria-label="提醒线">
+            <div className="threshold-picker" role="group" aria-label={t("alerts.threshold")}>
               {THRESHOLD_OPTIONS.map((value) => (
                 <button
                   key={value}
@@ -465,21 +500,21 @@ export function SettingsPage({
         </div>
         <div className="settings-row">
           <div>
-            <strong>历史保留</strong>
-            <span>超期的观测记录会被清理；已记录的提醒不受影响。</span>
+            <strong>{t("history.retention")}</strong>
+            <span>{t("history.retentionHelp")}</span>
           </div>
           <select value={retention} onChange={(event) => setRetention(Number(event.target.value))}>
             {RETENTION_OPTIONS.map((value) => (
               <option key={value} value={value}>
-                保留 {value} 天
+                {t("history.retain", { days: value })}
               </option>
             ))}
           </select>
         </div>
         <div className="settings-row">
-          <span className="settings-hint">保存后立即按新的保留期清理历史。</span>
+          <span className="settings-hint">{t("history.cleanupHelp")}</span>
           <button className="button button-primary" disabled={busy} onClick={() => void saveMonitoring()}>
-            保存提醒与历史设置
+            {t("monitoring.save")}
           </button>
         </div>
       </div>
@@ -487,15 +522,15 @@ export function SettingsPage({
       <div className="settings-card">
         <div className="settings-row">
           <div>
-            <strong>导出数据</strong>
-            <span>导出本工具保存的账号与观测，不含凭据、凭据引用、连接地址和本地路径。</span>
+            <strong>{t("data.export")}</strong>
+            <span>{t("data.exportHelp")}</span>
           </div>
           <div className="settings-inline">
             <button className="button button-quiet" disabled={busy} onClick={() => void runExport("json")}>
-              <DownloadSimpleIcon /> 导出 JSON
+              <DownloadSimpleIcon /> {t("data.exportJson")}
             </button>
             <button className="button button-quiet" disabled={busy} onClick={() => void runExport("csv")}>
-              <DownloadSimpleIcon /> 导出 CSV
+              <DownloadSimpleIcon /> {t("data.exportCsv")}
             </button>
           </div>
         </div>
@@ -504,20 +539,16 @@ export function SettingsPage({
       <div className="settings-card danger">
         <div className="settings-row column">
           <div>
-            <strong>删除全部本地数据</strong>
-            <span>
-              删除所有账号、观测历史和提醒，并清理保存在 Windows
-              凭据管理器中的密钥。此操作不可撤销，建议先导出。
-            </span>
+            <strong>{t("data.deleteLocal")}</strong>
+            <span>{t("data.deleteHelp")}</span>
           </div>
           <div className="settings-inline">
             <input
-              aria-label="删除确认"
-              placeholder="输入「删除全部数据」以启用"
+              aria-label={t("data.confirmLabel")}
+              placeholder={t("data.confirmPlaceholder")}
               value={clearText}
               onChange={(event) => {
                 setClearText(event.target.value);
-                setConfirmClear(event.target.value === "删除全部数据");
               }}
             />
             <button
@@ -525,7 +556,7 @@ export function SettingsPage({
               disabled={!confirmClear || busy}
               onClick={() => void clearAll()}
             >
-              <TrashIcon /> 删除全部数据
+              <TrashIcon /> {t("data.delete")}
             </button>
           </div>
         </div>

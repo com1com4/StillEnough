@@ -186,8 +186,18 @@ pub async fn remove_account(
 }
 
 #[tauri::command]
-pub fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, String> {
-    Ok(lock(&state.settings)?.clone())
+pub fn get_settings(state: State<'_, AppState>, app: AppHandle) -> Result<AppSettings, String> {
+    let mut current = lock(&state.settings)?;
+    let resolved = current.language.resolve();
+    let changed = current.resolved_language != resolved;
+    current.resolved_language = resolved.into();
+    let settings = current.clone();
+    drop(current);
+    if changed {
+        crate::update_tray_language(&app, &settings);
+        publish(&app, &state);
+    }
+    Ok(settings)
 }
 
 pub fn load_settings(connection: &rusqlite::Connection) -> AppSettings {
@@ -288,6 +298,27 @@ pub fn set_theme(
     persist_settings(&state, &next)?;
     *current = next.clone();
     drop(current);
+    publish(&app, &state);
+    Ok(next)
+}
+
+#[tauri::command]
+pub fn set_language(
+    language: String,
+    state: State<'_, AppState>,
+    app: AppHandle,
+    window: tauri::WebviewWindow,
+) -> Result<AppSettings, String> {
+    require_main(&window)?;
+    let preference = crate::domain::models::LanguagePreference::parse(&language)?;
+    let mut current = lock(&state.settings)?;
+    let mut next = current.clone();
+    next.language = preference;
+    next.resolved_language = preference.resolve().into();
+    persist_settings(&state, &next)?;
+    *current = next.clone();
+    drop(current);
+    crate::update_tray_language(&app, &next);
     publish(&app, &state);
     Ok(next)
 }
@@ -803,6 +834,21 @@ mod tests {
             settings.history_retention_days,
             crate::services::history::DEFAULT_RETENTION_DAYS
         );
+    }
+
+    #[test]
+    fn sqlite_language_reload_preserves_other_preferences_and_recomputes_runtime_language() {
+        for language in ["zh-CN", "en", "system", "future"] {
+            let json = format!(
+                r#"{{"refreshMinutes":15,"widgetVisible":true,"language":"{language}","resolvedLanguage":"untrusted","widgetOpacity":75}}"#
+            );
+            let database = settings_database(&json);
+            let settings = load_settings(&database);
+            assert_eq!(settings.resolved_language, settings.language.resolve());
+            assert_eq!(settings.refresh_minutes, 15);
+            assert_eq!(settings.widget_opacity, 75);
+            assert!(settings.widget_visible);
+        }
     }
 
     #[test]

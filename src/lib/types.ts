@@ -66,6 +66,8 @@ export interface WidgetDisplay {
   maxAccounts: number;
 }
 export interface AppSettings {
+  language: import("./i18n").LanguagePreference;
+  resolvedLanguage: import("./i18n").Language;
   refreshMinutes: number;
   widgetVisible: boolean;
   alertEnabled: boolean;

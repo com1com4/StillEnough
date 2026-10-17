@@ -1,3 +1,5 @@
+import { t, applyLanguage, useLanguage, currentLanguage } from "./lib/i18n";
+import type { LanguagePreference } from "./lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConnectionEditor } from "./components/ConnectionEditor";
 import {
@@ -50,6 +52,7 @@ import type { ThemeMode } from "./lib/theme";
 import { SettingsPage } from "./components/SettingsPage";
 import { AboutPage } from "./components/AboutPage";
 import { APP_VERSION } from "./lib/version";
+import { providerName } from "./lib/providerPresentation";
 
 const blankAccount = (): AccountInput => ({
   id: null,
@@ -60,7 +63,12 @@ const blankAccount = (): AccountInput => ({
   cliAuthorized: false,
 });
 
+const PAGES = ["overview", "history", "settings", "about"] as const;
+type Page = (typeof PAGES)[number];
+
 const defaultSettings = (): AppSettings => ({
+  language: "system",
+  resolvedLanguage: currentLanguage(),
   refreshMinutes: 10,
   widgetVisible: false,
   alertEnabled: true,
@@ -77,22 +85,25 @@ const defaultSettings = (): AppSettings => ({
 });
 
 // 每个页面一句话说明，跟标题一起构成完整的页面头部；页面正文不再重复标题。
-const PAGE_SUMMARY: Record<string, string> = {
-  总览: "集中查看额度、重置时间与 API 账号余额。",
-  历史: "按账号查看额度与余额的实际观测；重置或长时间断档会断开曲线，不做插值。",
-  设置: "管理本机窗口、外观、额度提醒和历史数据。",
-  关于: "版本、产品信息与数据说明。",
-};
+const pageSummary = () => ({
+  overview: t("overview.summary"),
+  history: t("history.summary"),
+  settings: t("settings.summary"),
+  about: t("about.summary"),
+});
 
 const formatObserved = (value: string | null) => {
-  if (!value) return "暂无观测";
+  if (!value) return t("observation.none");
   const date = new Date(value);
   return Number.isNaN(date.valueOf())
-    ? "暂无观测"
-    : `更新于 ${new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(date)}`;
+    ? t("observation.none")
+    : t("observation.updated", {
+        time: new Intl.DateTimeFormat(currentLanguage(), { hour: "2-digit", minute: "2-digit" }).format(date),
+      });
 };
 
 function App() {
+  useLanguage();
   const isWidget = new URLSearchParams(window.location.search).get("view") === "widget";
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
@@ -100,7 +111,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [activePage, setActivePage] = useState("总览");
+  const [activePage, setActivePage] = useState<Page>("overview");
   const [editing, setEditing] = useState<AccountInput | null>(null);
   const [sort, setSort] = useState("default");
   const [now, setNow] = useState(() => Date.now());
@@ -149,7 +160,7 @@ function App() {
       setAccounts(nextAccounts);
       setError("");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "无法连接桌面应用后台");
+      setError(reason instanceof Error ? reason.message : t("error.backend"));
     } finally {
       setLoading(false);
     }
@@ -176,7 +187,7 @@ function App() {
         setError("");
       })
       .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : "无法连接桌面应用后台");
+        if (active) setError(reason instanceof Error ? reason.message : t("error.backend"));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -200,6 +211,20 @@ function App() {
     applyTheme(settings.theme);
     return watchSystemTheme(() => settings.theme);
   }, [settings.theme]);
+
+  useEffect(() => {
+    applyLanguage(settings.resolvedLanguage);
+  }, [settings.resolvedLanguage]);
+
+  async function changeLanguage(language: LanguagePreference) {
+    try {
+      const saved = await api.setLanguage(language);
+      applyLanguage(saved.resolvedLanguage);
+      setSettings(saved);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
+  }
 
   useEffect(() => {
     const tick = window.setInterval(() => {
@@ -241,7 +266,7 @@ function App() {
   }, [reload, reloadAlerts]);
 
   useEffect(() => {
-    if (isWidget || activePage !== "历史" || !historyAccount) return;
+    if (isWidget || activePage !== "history" || !historyAccount) return;
     let active = true;
     const key = `history:${historyDays}:${historyAccount}`;
     api
@@ -250,14 +275,14 @@ function App() {
         if (active) setHistory({ key, series });
       })
       .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : "历史读取失败");
+        if (active) setError(reason instanceof Error ? reason.message : t("error.history"));
       });
     return () => {
       active = false;
     };
   }, [activePage, historyDays, historyAccount, isWidget]);
   const historyLoading =
-    isWidget || activePage !== "历史" || history.key !== `history:${historyDays}:${historyAccount}`;
+    isWidget || activePage !== "history" || history.key !== `history:${historyDays}:${historyAccount}`;
 
   const warningCount = accounts.reduce(
     (count, account) =>
@@ -289,15 +314,15 @@ function App() {
   }
 
   async function remove(account: Account) {
-    if (!window.confirm(`删除「${account.alias}」及其本工具保存的历史数据？`)) return;
+    if (!window.confirm(t("account.confirmDelete", { alias: account.alias }))) return;
     try {
       await api.removeAccount(account.id);
-      setNotice("账号已删除");
+      setNotice(t("account.deleted"));
       await reload();
       await reloadAlerts();
     } catch (reason) {
       await reload();
-      setError(reason instanceof Error ? reason.message : "删除失败");
+      setError(reason instanceof Error ? reason.message : t("error.delete"));
     }
   }
 
@@ -315,8 +340,8 @@ function App() {
     if (!isWidget) {
       setNotice(
         completed === targets.length
-          ? `已更新 ${completed} 个账号`
-          : `已更新 ${completed} 个账号，${targets.length - completed} 个暂未更新，请查看账号状态`,
+          ? t("refresh.completed", { count: completed })
+          : t("refresh.partial", { count: completed, failed: targets.length - completed }),
       );
     }
   }
@@ -333,26 +358,26 @@ function App() {
       const actual = await api.setWidgetVisible(!settings.widgetVisible);
       setSettings((current) => ({ ...current, widgetVisible: actual }));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "浮窗操作失败");
+      setError(reason instanceof Error ? reason.message : t("error.widget"));
     }
   }
 
   async function changeRefreshInterval(minutes: number) {
     try {
       setSettings(await api.updateRefreshInterval(minutes));
-      setNotice("刷新间隔设置已保存");
+      setNotice(t("refresh.saved"));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "保存刷新间隔失败");
+      setError(reason instanceof Error ? reason.message : t("error.refreshSave"));
     }
   }
 
   async function changePause(paused: boolean) {
     try {
       setSettings(await api.setCollectionPaused(paused));
-      setNotice(paused ? "已暂停后台采集" : "已恢复后台采集，正在重新读取");
+      setNotice(paused ? t("collection.pausedNotice") : t("collection.resumedNotice"));
       if (!paused) void reload();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "切换采集状态失败");
+      setError(reason instanceof Error ? reason.message : t("error.collection"));
     }
   }
 
@@ -364,12 +389,12 @@ function App() {
       setNotice(
         saved.autostart === enabled
           ? enabled
-            ? "已设置为开机自动启动"
-            : "已取消开机自动启动"
-          : "开机自动启动设置未能生效",
+            ? t("autostart.enabledNotice")
+            : t("autostart.disabledNotice")
+          : t("autostart.notApplied"),
       );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "设置开机自动启动失败");
+      setError(reason instanceof Error ? reason.message : t("error.autostart"));
     }
   }
 
@@ -377,7 +402,7 @@ function App() {
     try {
       setSettings(await api.setTheme(theme));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "保存外观失败");
+      setError(reason instanceof Error ? reason.message : t("error.theme"));
     }
   }
 
@@ -385,7 +410,7 @@ function App() {
     try {
       setSettings(await api.setWidgetOptions(options));
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "保存浮窗设置失败");
+      setError(reason instanceof Error ? reason.message : t("error.widgetSave"));
     }
   }
 
@@ -396,7 +421,7 @@ function App() {
         current.map((event) => (event.id === id ? { ...event, readAt: new Date().toISOString() } : event)),
       );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "提醒状态更新失败");
+      setError(reason instanceof Error ? reason.message : t("error.alertUpdate"));
     }
   }
 
@@ -408,7 +433,7 @@ function App() {
         current.map((event) => ({ ...event, readAt: event.readAt ?? new Date().toISOString() })),
       );
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "提醒状态更新失败");
+      setError(reason instanceof Error ? reason.message : t("error.alertUpdate"));
     }
   }
 
@@ -455,12 +480,12 @@ function App() {
           <img className="brand-mark" src="/brand/stillenough.png" alt="" />
           <div>
             <strong>StillEnough</strong>
-            <span>AI 额度与余额监控</span>
+            <span>{t("app.tagline")}</span>
           </div>
         </div>
-        <div className="sidebar-label">工作区</div>
+        <div className="sidebar-label">{t("nav.workspace")}</div>
         <nav>
-          {["总览", "历史", "设置", "关于"].map((page, index) => (
+          {PAGES.map((page, index) => (
             <button
               key={page}
               className={`nav-item ${activePage === page ? "selected" : ""}`}
@@ -476,8 +501,8 @@ function App() {
                   ][index]
                 }
               </span>
-              {page}
-              {page === "总览" && unread > 0 && <span className="nav-count">{unread}</span>}
+              {t(`nav.${page}`)}
+              {page === "overview" && unread > 0 && <span className="nav-count">{unread}</span>}
             </button>
           ))}
         </nav>
@@ -490,14 +515,16 @@ function App() {
       <main className="main-panel">
         <header className="topbar">
           <div>
-            <h1 className="page-title">{activePage === "总览" ? "额度总览" : activePage}</h1>
-            <p className="page-subtitle">{PAGE_SUMMARY[activePage]}</p>
+            <h1 className="page-title">
+              {activePage === "overview" ? t("overview.title") : t(`nav.${activePage}`)}
+            </h1>
+            <p className="page-subtitle">{pageSummary()[activePage]}</p>
           </div>
           <div className="top-actions">
             <button
               className="button button-quiet alert-button"
-              aria-label={unread > 0 ? `额度提醒，${unread} 条未读` : "额度提醒"}
-              title={unread > 0 ? `${unread} 条未读提醒` : "暂无未读提醒"}
+              aria-label={unread > 0 ? t("alerts.unreadLabel", { count: unread }) : t("alerts.title")}
+              title={unread > 0 ? t("alerts.unread", { count: unread }) : t("alerts.noneUnread")}
               aria-expanded={alertPanel}
               onClick={() => setAlertPanel((open) => !open)}
             >
@@ -506,14 +533,14 @@ function App() {
             </button>
             <button className="button button-quiet" onClick={() => void toggleWidget()}>
               <SquaresFourIcon />
-              浮窗
+              {t("widget.short")}
             </button>
-            {activePage === "总览" && (
+            {activePage === "overview" && (
               <>
                 <button
                   className="button button-quiet"
-                  aria-label="刷新"
-                  title="刷新可更新的账号；刚刚更新或限流中的账号会跳过"
+                  aria-label={t("refresh.action")}
+                  title={t("refresh.help")}
                   disabled={!visibleAccounts.some((account) => !refreshState(account, now).disabled)}
                   onClick={() => void refresh()}
                 >
@@ -525,7 +552,7 @@ function App() {
                 </button>
                 <button className="button button-primary" onClick={() => openEditor()}>
                   <PlusIcon />
-                  添加账号
+                  {t("account.add")}
                 </button>
               </>
             )}
@@ -533,15 +560,15 @@ function App() {
         </header>
 
         {alertPanel && (
-          <section className="alert-panel" aria-label="额度提醒">
+          <section className="alert-panel" aria-label={t("alerts.title")}>
             <div className="alert-panel-head">
-              <strong>额度提醒</strong>
+              <strong>{t("alerts.title")}</strong>
               <div className="alert-panel-actions">
                 <button className="text-button" disabled={!unread} onClick={() => void markAllAlerts()}>
-                  <CheckIcon /> 全部标记已读
+                  <CheckIcon /> {t("alerts.markAll")}
                 </button>
                 <button className="text-button" onClick={() => setAlertPanel(false)}>
-                  关闭
+                  {t("common.close")}
                 </button>
               </div>
             </div>
@@ -558,7 +585,7 @@ function App() {
                 ))}
               </ul>
             ) : (
-              <p className="alert-empty">还没有低额度提醒。额度低于提醒线时会在这里出现。</p>
+              <p className="alert-empty">{t("alerts.empty")}</p>
             )}
           </section>
         )}
@@ -568,54 +595,58 @@ function App() {
             <div className="callout error-callout">
               <span>!</span>
               <div>
-                <strong>操作或数据读取未完成</strong>
-                <small>{error}</small>
+                <strong>{t("error.heading")}</strong>
+                <small>{fetchStatusLabel(error)}</small>
               </div>
-              <button onClick={() => void reload()}>重试</button>
+              <button onClick={() => void reload()}>{t("common.retry")}</button>
             </div>
           )}
           {notice && !error && (
             <div className="toast-notice">
-              {notice}
+              {fetchStatusLabel(notice)}
               <button onClick={() => setNotice("")}>×</button>
             </div>
           )}
 
-          {activePage === "总览" ? (
+          {activePage === "overview" ? (
             <>
               <section className="summary-grid">
                 <SummaryCard
-                  label="监控账号"
+                  label={t("overview.accounts")}
                   value={`${accounts.length}`}
-                  unit="个"
+                  unit={t("common.countUnit")}
                   icon=""
                   tone="blue"
-                  foot="已添加账号"
+                  foot={t("overview.added")}
                 />
                 <SummaryCard
-                  label="接近额度提醒线"
+                  label={t("overview.nearThreshold")}
                   value={`${warningCount}`}
-                  unit="个窗口"
+                  unit={t("overview.windowUnit")}
                   icon=""
                   tone="amber"
-                  foot={`提醒线 ${settings.alertThresholds.join("% / ")}%`}
+                  foot={t("alerts.thresholds", { values: settings.alertThresholds.join("% / ") })}
                 />
               </section>
 
               <div className="section-heading">
                 <div>
-                  <h2>我的账号</h2>
-                  <span>{accounts.length} 个账号</span>
+                  <h2>{t("overview.myAccounts")}</h2>
+                  <span>{t("account.count", { count: accounts.length })}</span>
                 </div>
-                <select aria-label="账号排序" value={sort} onChange={(event) => setSort(event.target.value)}>
-                  <option value="default">默认顺序</option>
-                  <option value="quota">接近限额优先</option>
+                <select
+                  aria-label={t("account.sort")}
+                  value={sort}
+                  onChange={(event) => setSort(event.target.value)}
+                >
+                  <option value="default">{t("account.defaultOrder")}</option>
+                  <option value="quota">{t("account.quotaOrder")}</option>
                 </select>
               </div>
 
               {loading ? (
                 <div className="loading-state">
-                  <span className="spinner" /> 正在加载…
+                  <span className="spinner" /> {t("common.loading")}
                 </div>
               ) : accounts.length ? (
                 <div className="account-grid">
@@ -633,19 +664,19 @@ function App() {
               ) : (
                 <div className="empty-state">
                   <SquaresFourIcon className="empty-icon" />
-                  <h3>{error ? "等待桌面后台连接" : "添加你的第一个账号"}</h3>
-                  <p>{error ? "请重新打开应用后重试。" : "连接 AI 平台，查看额度与余额。"}</p>
+                  <h3>{error ? t("account.waitBackend") : t("account.first")}</h3>
+                  <p>{error ? t("error.reopen") : t("account.connectHelp")}</p>
                   {!error && (
                     <button className="button button-primary" onClick={() => openEditor()}>
-                      ＋ 添加第一个账号
+                      {t("account.addFirst")}
                     </button>
                   )}
                 </div>
               )}
             </>
-          ) : activePage === "关于" ? (
+          ) : activePage === "about" ? (
             <AboutPage />
-          ) : activePage === "设置" ? (
+          ) : activePage === "settings" ? (
             <SettingsPage
               settings={settings}
               accounts={accounts}
@@ -655,6 +686,7 @@ function App() {
               onAutostartChange={changeAutostart}
               onWidgetOptions={changeWidgetOptions}
               onThemeChange={changeTheme}
+              onLanguageChange={changeLanguage}
               onNotice={setNotice}
               onError={setError}
               onCleared={() => {
@@ -683,7 +715,7 @@ function App() {
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
-            setNotice("连接已保存");
+            setNotice(t("connection.saved"));
             void reload();
           }}
         />
@@ -742,11 +774,17 @@ function AccountCard({
         </div>
         <div className="account-heading">
           <div className="account-name-row">
-            <h3>{account.productName}</h3>
+            <h3>{providerName(account.providerId, account.productName)}</h3>
           </div>
           <p>{account.alias}</p>
         </div>
-        <button className="more-button" onClick={onEdit} aria-label={`编辑${account.productName}`}>
+        <button
+          className="more-button"
+          onClick={onEdit}
+          aria-label={t("account.editLabel", {
+            product: providerName(account.providerId, account.productName),
+          })}
+        >
           <DotsThreeIcon />
         </button>
       </div>
@@ -758,12 +796,16 @@ function AccountCard({
             const stale = state === "stale";
             return (
               <div className={`metric-row state-${state}`} key={metric.metricId}>
-                <span className="metric-title" title={metric.label}>
+                <span
+                  className="metric-title"
+                  title={metric.kind === "balance" ? balanceLabel(metric) : metricLabel(metric.label)}
+                >
                   {metric.kind === "balance" ? balanceLabel(metric) : metricLabel(metric.label)}
                 </span>
                 {unknown ? (
                   <div className="metric-unknown">
-                    暂无数据<span>尚未记录额度</span>
+                    {t("metric.noData")}
+                    <span>{t("metric.notRecorded")}</span>
                   </div>
                 ) : metric.kind === "quota" ? (
                   <>
@@ -777,18 +819,18 @@ function AccountCard({
                       <strong className={!stale && metric.remainingPercent! <= 20 ? "low-value" : ""}>
                         {metric.remainingPercent}%
                       </strong>
-                      <span>{stale ? "上次剩余" : "剩余"}</span>
+                      <span>{stale ? t("metric.previousRemaining") : t("metric.remaining")}</span>
                     </div>
                     <span className="metric-reset">
-                      {stale ? "已过期 · 待更新" : resetLabel(metric.resetsAt)}
+                      {stale ? t("metric.stalePending") : resetLabel(metric.resetsAt)}
                     </span>
                   </>
                 ) : (
                   <div className="balance-display">
                     <strong>{balanceText(metric)}</strong>
                     <small>
-                      {metric.kind === "balance" ? "钱包余额" : "本地统计"}
-                      {stale && " · 已过期"}
+                      {metric.kind === "balance" ? t("metric.wallet") : t("metric.local")}
+                      {stale && t("metric.staleSuffix")}
                     </small>
                   </div>
                 )}
@@ -796,11 +838,11 @@ function AccountCard({
             );
           })
         ) : (
-          <div className="metric-placeholder">尚未添加额度窗口</div>
+          <div className="metric-placeholder">{t("metric.noWindows")}</div>
         )}
       </div>
       <div className="account-card-bottom">
-        <div className="source-info">{`${Array.from(new Set(account.metrics.map((m) => metricSourceLabel(m.source)))).join(" / ") || "待连接"} · ${account.refreshing ? "正在刷新…" : account.fetchStatus === "rate_limited" ? refresh.label : fetchStatusLabel(account.fetchStatus)}`}</div>
+        <div className="source-info">{`${Array.from(new Set(account.metrics.map((m) => metricSourceLabel(m.source)))).join(" / ") || t("connection.pending")} · ${account.refreshing ? t("refresh.busy") : account.fetchStatus === "rate_limited" ? refresh.label : fetchStatusLabel(account.fetchStatus)}`}</div>
         <div className="account-foot">
           <small>{formatObserved(account.lastSuccessAt)}</small>
           <div className="card-actions">
@@ -812,8 +854,14 @@ function AccountCard({
             >
               <ArrowsClockwiseIcon className={account.refreshing ? "refresh-spinning" : ""} />
             </button>
-            <button onClick={onEdit}>编辑</button>
-            <button className="delete-button" onClick={onRemove} aria-label={`删除${account.productName}`}>
+            <button onClick={onEdit}>{t("common.edit")}</button>
+            <button
+              className="delete-button"
+              onClick={onRemove}
+              aria-label={t("account.deleteLabel", {
+                product: providerName(account.providerId, account.productName),
+              })}
+            >
               <TrashIcon />
             </button>
           </div>

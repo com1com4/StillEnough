@@ -1,9 +1,11 @@
+import { t, currentLanguage } from "../lib/i18n";
 import { NetworkFields } from "./NetworkFields";
 import { useEffect, useRef, useState } from "react";
 import type { AccountInput, ProbeResult, ProviderDescriptor } from "../lib/types";
 import { api } from "../lib/ipc";
 import { balanceText, balanceLabel, fetchStatusLabel, metricLabel } from "../lib/presentation";
 import { XIcon } from "@phosphor-icons/react";
+import { localizeProvider, providerOptionLabel } from "../lib/providerPresentation";
 
 export function ConnectionEditor({
   value,
@@ -25,9 +27,10 @@ export function ConnectionEditor({
   const feedback = useRef<HTMLDivElement>(null);
   const session = useRef<string | null>(null);
   const mounted = useRef(true);
-  const selected = providers.find((p) => p.id === value.providerId);
+  const localizedProviders = providers.map(localizeProvider);
+  const selected = localizedProviders.find((p) => p.id === value.providerId);
   // Temporarily hide app-server from new connections; existing accounts remain manageable.
-  const selectableProviders = providers.filter((p) => p.id !== "codex" || value.id !== null);
+  const selectableProviders = localizedProviders.filter((p) => p.id !== "codex" || value.id !== null);
   const isCli = ["cli", "local_oauth"].includes(selected?.authMethod ?? "");
   const credentialLabel = selected?.authMethod === "access_key_pair" ? "AccessKey Secret" : "API Key";
   useEffect(() => {
@@ -65,21 +68,21 @@ export function ConnectionEditor({
     onChange({ ...value, ...patch });
   }
   async function prepare(requireCliAuthorization = true) {
-    if (!selected?.supported) throw new Error("所选产品尚未支持读取");
-    if (!value.alias.trim()) throw new Error("请填写账号别名");
+    if (!selected?.supported) throw new Error(t("connection.unsupported"));
+    if (!value.alias.trim()) throw new Error(t("connection.aliasRequired"));
     if (isCli && requireCliAuthorization && !value.cliAuthorized)
-      throw new Error("请先勾选授权本地登录来源查询");
+      throw new Error(t("connection.authorizationRequired"));
     if (!session.current) {
       const id = await api.beginSetup(value);
       if (!mounted.current) {
         void api.cancelSetup(id);
-        throw new Error("配置已关闭");
+        throw new Error(t("connection.closed"));
       }
       session.current = id;
     }
     if (!isCli && secret.current?.value) {
       if (selected.authMethod === "access_key_pair" && !accessKeyId.current?.value.trim())
-        throw new Error("请填写 AccessKey ID");
+        throw new Error(t("connection.accessIdRequired"));
       const credential =
         selected.authMethod === "access_key_pair"
           ? JSON.stringify({
@@ -131,9 +134,9 @@ export function ConnectionEditor({
         <header className="modal-header">
           <div>
             <span className="eyebrow">ACCOUNT CONNECTION</span>
-            <h2 id="connection-heading">{value.id ? "管理连接" : "添加账号"}</h2>
+            <h2 id="connection-heading">{value.id ? t("connection.manage") : t("account.add")}</h2>
           </div>
-          <button className="icon-button" onClick={onClose} aria-label="关闭">
+          <button className="icon-button" onClick={onClose} aria-label={t("common.close")}>
             <XIcon />
           </button>
         </header>
@@ -144,10 +147,10 @@ export function ConnectionEditor({
           }}
         >
           <div className="modal-scroll">
-            <p className="connection-flow">选择产品 → 配置连接 → 测试读取 → 保存账号</p>
+            <p className="connection-flow">{t("connection.flow")}</p>
             <fieldset disabled={busy} className="connection-fields">
               <label>
-                产品
+                {t("connection.product")}
                 <select
                   required
                   value={value.providerId}
@@ -162,11 +165,10 @@ export function ConnectionEditor({
                     });
                   }}
                 >
-                  <option value="">选择要监控的产品</option>
+                  <option value="">{t("connection.chooseProduct")}</option>
                   {selectableProviders.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name}
-                      {!p.supported ? ` · ${p.status}` : p.name.startsWith("阿里") ? " · 实验性" : ""}
+                      {providerOptionLabel(p)}
                     </option>
                   ))}
                 </select>
@@ -175,7 +177,7 @@ export function ConnectionEditor({
                 <details className="connection-capability connection-notes">
                   <summary>
                     {selected.capability}
-                    <span>查看说明</span>
+                    <span>{t("connection.details")}</span>
                   </summary>
                   <p>{selected.limitation}</p>
                 </details>
@@ -183,17 +185,17 @@ export function ConnectionEditor({
               {selected?.supported && (
                 <>
                   <label>
-                    账号别名
+                    {t("account.alias")}
                     <input
                       required
                       maxLength={80}
                       value={value.alias}
                       onChange={(e) => update({ alias: e.target.value })}
-                      placeholder="例如：个人 API 账号"
+                      placeholder={t("connection.aliasPlaceholder")}
                     />
                   </label>
                   <details>
-                    <summary>网络方式</summary>
+                    <summary>{t("network.mode")}</summary>
                     <NetworkFields
                       value={value.network ?? { mode: "inherit", proxyUrl: "" }}
                       onChange={(network) => update({ network })}
@@ -202,11 +204,9 @@ export function ConnectionEditor({
                   </details>
                   {isCli ? (
                     <div className="connection-capability">
-                      <strong>通过已有本地登录查询</strong>
+                      <strong>{t("connection.localLogin")}</strong>
                       <pre>{selected.setupInstructions}</pre>
-                      <p>
-                        仅使用此产品当前本地登录来源。切换账号后请重新测试；同一来源只能保存一个监控账号。
-                      </p>
+                      <p>{t("connection.localHelp")}</p>
                       <label className="connection-enable">
                         <input
                           type="checkbox"
@@ -219,7 +219,7 @@ export function ConnectionEditor({
                   ) : (
                     <>
                       <label>
-                        API 服务地址
+                        {t("connection.url")}
                         <select value={value.baseUrl} onChange={(e) => update({ baseUrl: e.target.value })}>
                           {selected.baseUrls.map((url) => (
                             <option key={url} value={url}>
@@ -237,24 +237,22 @@ export function ConnectionEditor({
                             autoComplete="off"
                             spellCheck={false}
                             onChange={invalidate}
-                            placeholder="输入 AccessKey ID"
+                            placeholder={t("connection.accessIdPlaceholder")}
                           />
                         </label>
                       )}
                       <label>
-                        {value.id ? `替换 ${credentialLabel}（留空保留已配置凭据）` : credentialLabel}
+                        {value.id ? t("connection.replaceKey", { label: credentialLabel }) : credentialLabel}
                         <input
                           ref={secret}
                           type="password"
                           autoComplete="off"
                           spellCheck={false}
                           onChange={invalidate}
-                          placeholder={value.id ? "已配置 · 不回显 Key" : "输入只读查询所需的 Key"}
+                          placeholder={value.id ? t("connection.keyStored") : t("connection.keyPlaceholder")}
                         />
                       </label>
-                      <p className="privacy-note">
-                        凭据保存在当前 Windows 用户的凭据管理器中，不写入本地数据库。 测试提交后输入会清空。
-                      </p>
+                      <p className="privacy-note">{t("connection.keyPrivacy")}</p>
                     </>
                   )}
                   <label className="connection-enable">
@@ -264,15 +262,13 @@ export function ConnectionEditor({
                       onChange={(e) => update({ enabled: e.target.checked })}
                     />
                     {isCli
-                      ? "启用运行期间的额度自动刷新"
+                      ? t("connection.enableCli")
                       : value.id
-                        ? "自动刷新额度与余额"
-                        : "我同意应用保存凭据，并定期查询该账号的额度或余额"}
+                        ? t("connection.enableApi")
+                        : t("connection.consent")}
                   </label>
                   <p className="privacy-note">
-                    {isCli
-                      ? "测试读取成功并确认当前登录账号后才能添加。取消授权后可保存停用连接。"
-                      : "测试读取成功并确认后才能添加账号。替换凭据会清除该连接的旧观测与历史。"}
+                    {isCli ? t("connection.cliTestHelp") : t("connection.apiTestHelp")}
                   </p>
                   <button
                     type="button"
@@ -280,7 +276,7 @@ export function ConnectionEditor({
                     onClick={() => void test()}
                     disabled={busy || (isCli && !value.cliAuthorized)}
                   >
-                    {busy ? "处理中…" : "测试连接"}
+                    {busy ? t("common.busy") : t("connection.test")}
                   </button>
                 </>
               )}
@@ -288,41 +284,43 @@ export function ConnectionEditor({
             <div ref={feedback} aria-live="polite" aria-busy={busy}>
               {busy && (
                 <p className="privacy-note" role="status">
-                  正在处理，请稍候…
+                  {t("common.processing")}
                 </p>
               )}
               {error && (
                 <p className="connection-error" role="alert">
-                  {error}
+                  {fetchStatusLabel(error)}
                 </p>
               )}
               {probe && (
                 <div className="connection-result" role="status">
-                  <strong>
-                    {isCli
-                      ? "已读取当前本地登录账号额度 · 身份未核验"
-                      : "读取成功 · 按配置凭据绑定，身份未核验"}
-                  </strong>
+                  <strong>{isCli ? t("connection.cliSuccess") : t("connection.apiSuccess")}</strong>
                   {probe.metrics.map((m) => (
                     <p key={m.metricId}>
                       {m.kind === "balance" ? balanceLabel(m) : metricLabel(m.label)}：
                       {(m.kind === "balance" ? balanceText(m) : m.remaining) ??
                         (m.remainingPercent != null
-                          ? `剩余 ${Math.round(m.remainingPercent * 10) / 10}%`
-                          : "未知 / 未提供")}
+                          ? t("metric.remainingPercent", {
+                              percent: Math.round(m.remainingPercent * 10) / 10,
+                            })
+                          : t("metric.unknown"))}
                     </p>
                   ))}
-                  <small>观测时间：{new Date(probe.observedAt).toLocaleString()} · 测试 5 分钟内有效</small>
+                  <small>
+                    {t("observation.time")}
+                    {new Date(probe.observedAt).toLocaleString(currentLanguage())}{" "}
+                    {t("connection.testValidity")}
+                  </small>
                 </div>
               )}
             </div>
             {selected && !selected.supported && (
-              <p className="connection-error">尚未支持此产品。没有人工额度录入入口。</p>
+              <p className="connection-error">{t("connection.noManual")}</p>
             )}
           </div>
           <footer className="modal-footer">
             <button type="button" className="button button-quiet" onClick={onClose}>
-              取消
+              {t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -331,7 +329,7 @@ export function ConnectionEditor({
                 busy || !selected?.supported || (!value.id && !value.enabled) || (value.enabled && !probe)
               }
             >
-              {busy ? "处理中…" : !value.id ? "添加账号并开始监控" : "保存连接"}
+              {busy ? t("common.busy") : !value.id ? t("connection.addMonitor") : t("connection.save")}
             </button>
           </footer>
         </form>

@@ -1,4 +1,5 @@
 import type { HistoryPoint, HistorySeries } from "./types";
+import { currentLanguage } from "./i18n";
 
 export interface ChartSegment {
   resetsAt: string | null;
@@ -24,12 +25,7 @@ const time = (value: string) => Date.parse(value);
  * so a reset or an outage is never bridged, and a single observation draws as a dot
  * rather than a flat line.
  */
-export function buildChart(
-  series: HistorySeries,
-  width: number,
-  height: number,
-  padding = 28,
-): Chart | null {
+export function buildChart(series: HistorySeries, width: number, height: number, padding = 28): Chart | null {
   const points: { at: number; value: number }[] = [];
   for (const segment of series.segments) {
     for (const point of segment.points) {
@@ -53,7 +49,8 @@ export function buildChart(
   }
   const innerWidth = Math.max(width - padding * 2, 1);
   const innerHeight = Math.max(height - padding * 2, 1);
-  const x = (at: number) => padding + (to === from ? innerWidth / 2 : ((at - from) / (to - from)) * innerWidth);
+  const x = (at: number) =>
+    padding + (to === from ? innerWidth / 2 : ((at - from) / (to - from)) * innerWidth);
   const y = (value: number) => padding + innerHeight - ((value - min) / (max - min)) * innerHeight;
   const segments: ChartSegment[] = series.segments.map((segment) => {
     const drawn = segment.points
@@ -91,4 +88,4 @@ export const formatValue = (value: number, kind: HistorySeries["kind"]) =>
   kind === "quota" ? formatPercent(value) : formatAmount(value);
 
 export const dayLabel = (value: number) =>
-  new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit" }).format(value);
+  new Intl.DateTimeFormat(currentLanguage(), { month: "2-digit", day: "2-digit" }).format(value);

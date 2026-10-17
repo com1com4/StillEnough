@@ -1,3 +1,5 @@
+import { providerName } from "../lib/providerPresentation";
+import { t } from "../lib/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowSquareOutIcon,
@@ -19,6 +21,7 @@ import {
   balanceLabel,
   refreshState,
   metricState,
+  metricLabel,
   widgetMetrics,
   resetLabel,
   shortLabel,
@@ -118,22 +121,22 @@ export function Widget({
       await contextMenu.current?.close();
       const menu = await Menu.new({
         items: [
-          { id: "stillenough-widget-open", text: "打开 StillEnough" },
+          { id: "stillenough-widget-open", text: t("widget.open") },
           {
             id: "stillenough-widget-refresh",
-            text: accounts.some((account) => account.refreshing) ? "正在刷新…" : "刷新额度",
+            text: accounts.some((account) => account.refreshing) ? t("refresh.busy") : t("widget.refresh"),
             enabled: accounts.some((account) => !refreshState(account).disabled),
           },
           { item: "Separator" },
           {
             id: "stillenough-widget-collapse",
-            text: collapsed ? "展开浮窗" : "折叠浮窗",
+            text: collapsed ? t("widget.expand") : t("widget.collapse"),
           },
-          { id: "stillenough-widget-pin", text: pinned ? "取消置顶" : "置顶浮窗" },
+          { id: "stillenough-widget-pin", text: pinned ? t("widget.unpin") : t("widget.pin") },
           { item: "Separator" },
-          { id: "stillenough-widget-hide", text: "隐藏浮窗" },
+          { id: "stillenough-widget-hide", text: t("widget.hide") },
           { item: "Separator" },
-          { id: "stillenough-widget-quit", text: "退出 StillEnough" },
+          { id: "stillenough-widget-quit", text: t("app.quit") },
         ],
       });
       contextMenu.current = menu;
@@ -179,52 +182,52 @@ export function Widget({
         void showContextMenu(event.clientX, event.clientY);
       }}
     >
-      <div className="widget-drag" data-tauri-drag-region title="拖动浮窗" />
+      <div className="widget-drag" data-tauri-drag-region title={t("widget.drag")} />
       <div className="widget-controls">
         <button
           onClick={() => persist({ pinned: !pinned })}
-          aria-label={pinned ? "取消置顶" : "置顶"}
+          aria-label={pinned ? t("widget.unpin") : t("widget.pinned")}
           aria-pressed={pinned}
         >
           <PushPinIcon weight={pinned ? "fill" : "regular"} />
         </button>
-        <button onClick={toggleCollapsed} aria-label={collapsed ? "展开浮窗" : "折叠浮窗"}>
+        <button onClick={toggleCollapsed} aria-label={collapsed ? t("widget.expand") : t("widget.collapse")}>
           {collapsed ? <CaretDownIcon /> : <CaretUpIcon />}
         </button>
         <button
           onClick={onReload}
           disabled={!accounts.some((account) => !refreshState(account).disabled)}
-          aria-label="重新读取额度"
+          aria-label={t("widget.refreshAgain")}
         >
           <ArrowsClockwiseIcon
             className={accounts.some((account) => account.refreshing) ? "refresh-spinning" : ""}
           />
         </button>
-        <button onClick={onOpen} aria-label="打开管理器">
+        <button onClick={onOpen} aria-label={t("widget.manager")}>
           <ArrowSquareOutIcon />
         </button>
-        <button onClick={onHide} aria-label="隐藏浮窗">
+        <button onClick={onHide} aria-label={t("widget.hide")}>
           <XIcon />
         </button>
       </div>
       {operationError && (
         <div className="widget-operation-note">
-          {operationError}
+          {fetchStatusLabel(operationError)}
           <button onClick={() => setOperationError("")}>×</button>
         </div>
       )}
       {error && (
         <div className="widget-message" role="alert">
-          <p>{error}</p>
-          <button onClick={onReload}>重试读取</button>
+          <p>{fetchStatusLabel(error)}</p>
+          <button onClick={onReload}>{t("widget.retry")}</button>
         </div>
       )}
       {loading && !visibleAccounts.length ? (
-        <p className="widget-empty">正在读取…</p>
+        <p className="widget-empty">{t("common.reading")}</p>
       ) : !visibleAccounts.length ? (
         <div className="widget-message">
-          <strong>尚未添加账号</strong>
-          <button onClick={onOpen}>打开管理器</button>
+          <strong>{t("account.noneAdded")}</strong>
+          <button onClick={onOpen}>{t("widget.manager")}</button>
         </div>
       ) : (
         <div className="widget-rows">
@@ -233,17 +236,23 @@ export function Widget({
               className="widget-row"
               key={account.id}
               onClick={onOpen}
-              title={`${account.productName} · ${account.alias}；点击打开管理器`}
+              title={t("widget.accountTitle", {
+                product: providerName(account.providerId, account.productName),
+                alias: account.alias,
+              })}
             >
               <span className="widget-identity">
                 {display.showAlias && <small className="widget-alias">{account.alias}</small>}
                 <span className="widget-product">
                   <ProviderIcon product={account.productName} />
-                  <span>{productBrand(account.productName)?.name ?? account.productName}</span>
+                  <span>
+                    {productBrand(account.productName)?.name ??
+                      providerName(account.providerId, account.productName)}
+                  </span>
                 </span>
                 <small className="widget-account-status" aria-live="polite">
                   {account.refreshing
-                    ? "正在刷新…"
+                    ? t("refresh.busy")
                     : ["ok", "idle"].includes(account.fetchStatus)
                       ? ""
                       : account.fetchStatus === "rate_limited"
@@ -260,13 +269,13 @@ export function Widget({
                       <span
                         className={`widget-metric state-${state} ${!unknown && state === "current" && metric.kind === "quota" && metric.remainingPercent! <= 20 ? "is-low" : ""}`}
                         key={metric.metricId}
-                        title={`${metric.kind === "balance" ? balanceLabel(metric) : metric.label} · ${metricSourceLabel(metric.source)} · ${metric.observedAt}`}
+                        title={`${metric.kind === "balance" ? balanceLabel(metric) : metricLabel(metric.label)} · ${metricSourceLabel(metric.source)} · ${metric.observedAt}`}
                       >
                         <strong>
                           {unknown
-                            ? "暂无数据"
+                            ? t("metric.noData")
                             : metric.kind === "quota"
-                              ? `${collapsed ? `${shortLabel(metric.label)} ` : ""}${state === "stale" ? "上次 " : ""}${metric.remainingPercent}%`
+                              ? `${collapsed ? `${shortLabel(metric.label)} ` : ""}${state === "stale" ? t("metric.previousPrefix") : ""}${metric.remainingPercent}%`
                               : balanceText(metric, "widget")}
                         </strong>
                         {!collapsed && display.showProgress && !unknown && metric.kind === "quota" && (
@@ -277,13 +286,24 @@ export function Widget({
                         {!collapsed && (
                           <small>
                             {unknown
-                              ? `${metric.kind === "balance" ? balanceLabel(metric) : shortLabel(metric.label)} · 未记录`
+                              ? t("widget.notRecorded", {
+                                  label:
+                                    metric.kind === "balance"
+                                      ? balanceLabel(metric)
+                                      : shortLabel(metric.label),
+                                })
                               : state === "stale"
-                                ? `已过期 · ${Math.max(0, Math.floor((Date.now() - Date.parse(metric.observedAt)) / 60000)) || 0}分钟前`
+                                ? t("widget.staleMinutes", {
+                                    minutes:
+                                      Math.max(
+                                        0,
+                                        Math.floor((Date.now() - Date.parse(metric.observedAt)) / 60000),
+                                      ) || 0,
+                                  })
                                 : metric.kind === "quota"
                                   ? `${shortLabel(metric.label)}${display.showReset ? ` · ${resetLabel(metric.resetsAt)}` : ""}`
                                   : metric.kind === "balance"
-                                    ? "钱包余额"
+                                    ? t("metric.wallet")
                                     : metric.label}
                           </small>
                         )}
@@ -292,7 +312,7 @@ export function Widget({
                   })
                 ) : (
                   <span className="widget-metric state-unknown">
-                    <strong>暂无数据</strong>
+                    <strong>{t("metric.noData")}</strong>
                   </span>
                 )}
               </span>
@@ -303,7 +323,7 @@ export function Widget({
       <div className="widget-footer">
         {visibleAccounts.length > display.maxAccounts && (
           <button className="widget-more" onClick={onOpen}>
-            另有 {visibleAccounts.length - display.maxAccounts} 个账号
+            {t("widget.moreAccounts", { count: visibleAccounts.length - display.maxAccounts })}
           </button>
         )}
       </div>

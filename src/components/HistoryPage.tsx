@@ -1,4 +1,6 @@
-import { metricLabel } from "../lib/presentation";
+import { providerName } from "../lib/providerPresentation";
+import { t, currentLanguage } from "../lib/i18n";
+import { currencyLabel, metricLabel } from "../lib/presentation";
 import { useMemo, useState } from "react";
 import { ClockIcon } from "@phosphor-icons/react";
 import type { Account, HistorySeries } from "../lib/types";
@@ -33,27 +35,27 @@ export function HistoryPage({
   );
   const chart = useMemo(() => (active ? buildChart(active, WIDTH, HEIGHT) : null), [active]);
 
-  const unit = active?.kind === "quota" ? "" : (active?.unit ?? "");
+  const unit = active?.kind === "quota" ? "" : currencyLabel(active?.unit ?? "");
   const lineCount = chart?.segments.filter((segment) => segment.points.length > 1).length ?? 0;
   const isolatedCount = chart?.segments.filter((segment) => segment.points.length === 1).length ?? 0;
 
   return (
     <div className="secondary-page">
       <div className="history-controls">
-        <div className="segmented" role="group" aria-label="历史范围">
+        <div className="segmented" role="group" aria-label={t("history.range")}>
           {[7, 30].map((option) => (
             <button
               key={option}
               className={days === option ? "selected" : ""}
               onClick={() => onDaysChange(option as 7 | 30)}
             >
-              近 {option} 天
+              {t("history.days", { days: option })}
             </button>
           ))}
         </div>
         {accounts.length > 0 && (
           <select
-            aria-label="账号"
+            aria-label={t("account.label")}
             value={accountId}
             onChange={(event) => {
               onAccountChange(event.target.value);
@@ -62,7 +64,7 @@ export function HistoryPage({
           >
             {accounts.map((item) => (
               <option key={item.id} value={item.id}>
-                {`${item.productName} · ${item.alias}`}
+                {`${providerName(item.providerId, item.productName)} · ${item.alias}`}
               </option>
             ))}
           </select>
@@ -85,17 +87,13 @@ export function HistoryPage({
 
       {loading ? (
         <div className="loading-state">
-          <span className="spinner" /> 正在读取历史…
+          <span className="spinner" /> {t("history.loading")}
         </div>
       ) : !active ? (
         <div className="history-empty">
           <ClockIcon className="empty-icon" />
-          <h3>{accounts.length ? `${days} 天内没有额度记录` : "还没有可查看的账号"}</h3>
-          <p>
-            {accounts.length
-              ? "历史只来自后台成功读取的观测。账号尚未成功刷新，或数据已超出保留期。"
-              : "添加并连接账号后，这里会显示按平台记录的真实额度曲线。"}
-          </p>
+          <h3>{accounts.length ? t("history.emptyDays", { days }) : t("history.noAccounts")}</h3>
+          <p>{accounts.length ? t("history.emptyHelp") : t("history.connectHelp")}</p>
         </div>
       ) : (
         <section className="history-chart-card">
@@ -103,20 +101,23 @@ export function HistoryPage({
             <div>
               <h2>{metricLabel(active.metricLabel)}</h2>
               <p>
-                {active.productName} · {active.alias} ·{" "}
-                {active.kind === "quota" ? "剩余百分比" : `余额（${active.unit}）`} · {active.observedCount}{" "}
-                次观测
+                {providerName(undefined, active.productName)} · {active.alias} ·{" "}
+                {active.kind === "quota" ? t("history.remainingPercent") : t("history.balanceUnit", { unit })}{" "}
+                ·{" "}
+                {t(active.observedCount === 1 ? "history.oneObservation" : "history.observations", {
+                  count: active.observedCount,
+                })}
               </p>
             </div>
             <div className="chart-range">
               {(() => {
                 const last = chart?.segments[chart.segments.length - 1]?.values.slice(-1)[0];
-                if (last === undefined || !chart) return <small>无可绘制数值</small>;
+                if (last === undefined || !chart) return <small>{t("history.noValues")}</small>;
                 return (
                   <>
                     <strong>
                       {formatValue(last, active.kind)}
-                      {unit}
+                      {unit && ` ${unit}`}
                     </strong>
                     <small>
                       {dayLabel(chart.from)} – {dayLabel(chart.to)}
@@ -132,7 +133,7 @@ export function HistoryPage({
                 className="history-chart"
                 viewBox={`0 0 ${chart.width} ${chart.height}`}
                 role="img"
-                aria-label={`${metricLabel(active.metricLabel)} 近 ${days} 天曲线`}
+                aria-label={t("history.chartLabel", { label: metricLabel(active.metricLabel), days })}
               >
                 {[0, 0.5, 1].map((ratio) => {
                   const y = 28 + (chart.height - 56) * ratio;
@@ -180,17 +181,19 @@ export function HistoryPage({
               </svg>
               <footer className="chart-foot">
                 {chart.segments.length > 1
-                  ? `${lineCount} 段曲线${isolatedCount ? `，${isolatedCount} 个孤立观测点` : ""}；重置时间变化或长时间无数据处断开，未做插值。`
-                  : `最近更新 ${new Intl.DateTimeFormat("zh-CN", {
-                      month: "2-digit",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }).format(chart.to)}`}
+                  ? t("history.segments", { lines: lineCount, points: isolatedCount })
+                  : t("history.updated", {
+                      time: new Intl.DateTimeFormat(currentLanguage(), {
+                        month: "2-digit",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(chart.to),
+                    })}
               </footer>
             </>
           ) : (
-            <p className="chart-foot">该窗口没有可绘制的数值；未知额度不会显示为 0% 或 100%。</p>
+            <p className="chart-foot">{t("history.unknownHelp")}</p>
           )}
         </section>
       )}

@@ -1,3 +1,4 @@
+import { t } from "../lib/i18n";
 import type { NetworkConfig } from "../lib/types";
 
 export function NetworkFields({
@@ -12,20 +13,20 @@ export function NetworkFields({
   return (
     <>
       <label>
-        网络方式
+        {t("network.mode")}
         <select
           value={value.mode}
           onChange={(e) => onChange({ mode: e.target.value as NetworkConfig["mode"], proxyUrl: "" })}
         >
-          {!global && <option value="inherit">使用全局设置</option>}
-          <option value="system">跟随系统</option>
-          <option value="direct">直连</option>
-          <option value="custom">自定义代理</option>
+          {!global && <option value="inherit">{t("network.inherit")}</option>}
+          <option value="system">{t("common.system")}</option>
+          <option value="direct">{t("network.direct")}</option>
+          <option value="custom">{t("network.custom")}</option>
         </select>
       </label>
       {value.mode === "custom" && (
         <label>
-          代理地址
+          {t("network.proxyUrl")}
           <input
             value={value.proxyUrl}
             maxLength={512}
@@ -33,17 +34,10 @@ export function NetworkFields({
             autoComplete="off"
             onChange={(e) => onChange({ ...value, proxyUrl: e.target.value.trim() })}
           />
-          <span className="settings-hint">
-            支持 HTTP、SOCKS5（本地 DNS）、SOCKS5h（代理 DNS）；暂不支持账号密码。
-          </span>
+          <span className="settings-hint">{t("network.protocolHelp")}</span>
         </label>
       )}
-      {value.mode === "system" && (
-        <p className="settings-hint">
-          优先当前进程代理环境变量，其次 Windows 静态系统代理。PAC
-          暂不支持；环境变量变更需重启应用。外部静态代理变更后请重新保存。
-        </p>
-      )}
+      {value.mode === "system" && <p className="settings-hint">{t("network.systemHelp")}</p>}
     </>
   );
 }
