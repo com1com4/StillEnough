@@ -15,7 +15,7 @@ pnpm cli:build
 cargo install --path ./crates/stillenough-cli --locked
 ```
 
-独立 Windows x64 ZIP 解压后运行 `stillenough-cli.exe` 或 `.cmd`；独立 CLI 不需要 Node 或 WebView2，桌面后台需要 WebView2。本机 release 二进制通过依赖检查确认仍需要 Windows VC 运行库（VCRUNTIME140.dll），干净系统需另行核查该依赖。ZIP 不会修改 PATH。含空格路径用 PowerShell 调用运算符：
+正式发布的 Windows x64 便携 ZIP 同时包含 `StillEnough.exe` 和 `stillenough-cli.exe`，只需下载、解压一次。CLI 不需要 Node 或 WebView2，桌面后台需要 WebView2。本机 release 二进制通过依赖检查确认仍需要 Windows VC 运行库（VCRUNTIME140.dll），干净系统需另行核查该依赖。ZIP 不会修改 PATH。含空格路径用 PowerShell 调用运算符：
 
 ```powershell
 & 'C:\Tools\StillEnough CLI\stillenough-cli.exe' quota --json
@@ -78,7 +78,9 @@ $data = $result | ConvertFrom-Json
 
 升级桌面前退出旧版，旧版没有新所有者锁。新 host 在开库前获取数据目录范围的 Windows 内核对象锁，持有到进程退出；SQLite 设置 WAL 和 5 秒 busy_timeout，启动前检查完整性、拒绝未来 schema，需迁移时先做一致性备份。CLI 不启动第二后台、不执行迁移、不删除 WAL/shm。
 
-## 本地分发
+## 本地开发打包
+
+正式发布仅提供包含 GUI 和 CLI 的便携 ZIP 与 SHA256 校验文件，不发布安装程序、独立 CLI ZIP 或 npm 包。以下脚本仅用于开发阶段生成额外包，不是当前发布流程。
 
 ```powershell
 powershell -NoProfile -File scripts/package-cli.ps1
@@ -90,4 +92,4 @@ powershell -NoProfile -File scripts/package-cli.ps1 -IncludeDesktop
 
 PowerShell 5.1 原生管道捕获建议先在当前进程设置 `[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)` 和 `$OutputEncoding = [Console]::OutputEncoding`；其 `>` 默认会重编码为 UTF-16，若需要 UTF-8 文件，使用 `[IO.File]::WriteAllText` 明确 UTF-8 无 BOM。PS7 的原生重定向已通过检查。传输超时若附 operation_state_unknown，操作 ID 是查询线索，不代表后台已确认开始。
 
-`pnpm desktop:bundle` 构建含 CLI sidecar 的 NSIS；也可运行 `powershell -NoProfile -File scripts/build-desktop-with-cli.ps1 -Bundle none`。本轮未安装/卸载 NSIS，不能据脚本存在声称安装验收通过。
+便携版构建使用 `pnpm desktop:bundle -Bundle none`，两个 EXE 位于 `target/release/`。`pnpm desktop:bundle` 默认仍可生成含 CLI sidecar 的 NSIS，供开发使用，当前不对外发布；未完成安装/卸载验收。

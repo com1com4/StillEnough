@@ -17,8 +17,9 @@ Windows 桌面的 AI 额度与余额监控工具。集中查看多个平台的�
 - **真实数据，状态清楚**：额度窗口分别展示，钱包按币种展示；查询失败保留上次数据和时间，未知或过期明确标记，不把缺失值当作满额或零余额。
 - **适合日常桌面使用**：托盘常驻、可选开机启动、白天/夜间/跟随系统主题；支持全局及账号级网络设置，API 凭据保存在 Windows 系统凭据库。
 - **中英文界面**：在设置中选择跟随系统、简体中文或 English；语言偏好保存在本机，主窗口、浮窗与托盘使用相同设置。
+- **CLI / AI Agent 调用**：GUI 与 CLI 随同一个便携包提供；在主窗口授权后查询账号与额度、触发后台刷新，支持 JSON、超时和明确退出码。
 
-当前版本为 0.2.0，处于早期开发阶段。新增中英文切换和固定导航布局，见 [版本说明](docs/releases/v0.2.0.md)。已接入的平台与连接方式见下表；客户端内部接口可能变化，不同套餐、地区的验证范围见平台详情。
+当前版本为 0.3.0，处于早期开发阶段。新增 CLI / AI Agent 查询、独立访问授权和设置页滑动开关，见 [版本说明](docs/releases/v0.3.0.md)。已接入的平台与连接方式见下表；客户端内部接口可能变化，不同套餐、地区的验证范围见平台详情。
 
 ## 界面预览
 
@@ -93,12 +94,11 @@ cargo test --workspace --locked
 先从托盘退出已运行的程序，再构建：
 
 ```powershell
-pnpm tauri build --no-bundle
-# 或生成 Windows NSIS 安装包
-pnpm tauri build --bundles nsis
+pnpm desktop:bundle -Bundle none
+powershell -NoProfile -File scripts/package-portable.ps1
 ```
 
-可执行文件位于 target/release/stillenough.exe，安装包位于 target/release/bundle/nsis/。pnpm build 只构建前端。版本升级见 [版本管理](docs/VERSIONING.md)。
+可执行文件为 target/release/stillenough.exe 和 target/release/stillenough-cli.exe，发布时一起放入便携 ZIP。当前不发布安装程序。pnpm build 只构建前端。版本升级见 [版本管理](docs/VERSIONING.md)。
 
 ## 数据与隐私
 
@@ -131,12 +131,12 @@ pnpm tauri build --bundles nsis
 在主窗口“设置 → CLI / AI Agent 访问”开启权限后，可从 PowerShell 或 Agent 查询：
 
 ```powershell
-pnpm cli -- accounts list --json
-pnpm cli -- quota --json
-pnpm cli -- refresh --all --json
-pnpm cli -- doctor --json
+.\stillenough-cli.exe accounts list --json
+.\stillenough-cli.exe quota --json
+.\stillenough-cli.exe refresh --all --json
+.\stillenough-cli.exe doctor --json
 ```
 
 version/providers 无需桌面或授权。账号查询优先调用桌面命名管道；端点不存在时仅回退已授权只读缓存。刷新共用桌面后台，CLI 不读取凭据或直接联网。支持 --offline、--require-fresh、--timeout；旧值不补额，钱包不计算百分比。详见 [CLI 使用说明](docs/CLI.md)、[实施与验证记录](docs/CLI-IMPLEMENTATION.md)。
 
-`pnpm cli:build` 生成独立 CLI；`pnpm cli:package` 生成本地 ZIP/npm 包；`pnpm desktop:bundle` 构建附带 CLI 的 NSIS 桌面安装包。独立 Windows CLI 不需要 Node/WebView2；npm wrapper 需要 Node，真实刷新仍需桌面。尚未发布公共 npm 包，也未修改系统 PATH。
+GUI 与 CLI 随同一个便携 ZIP 发布，解压后分别运行；真实刷新需要桌面后台，CLI 不会自动启动第二个后台。CLI 本身不需要 Node/WebView2；桌面需要 WebView2，两者的 VC 运行库依赖在干净 Windows 上仍待验证。源码调用可用 `pnpm cli -- quota --json`，`pnpm desktop:bundle -Bundle none` 编译两个 EXE。本地 CLI ZIP/npm 打包脚本保留供开发使用，不作为当前正式发布渠道；未发布公共 npm 包，未修改系统 PATH。

@@ -59,3 +59,11 @@
 - [x] P2–P4：离线查询与 main-only UI 授权、严格 DACL Windows 管道、共用后台刷新/操作/诊断；自动化和 OS 管道证据见 CLI-IMPLEMENTATION.md。
 - [x] P5 本地分发工程：CLI scripts、cargo install、ZIP、npm wrapper/平台包、桌面 ZIP/NSIS sidecar 构建入口、使用文档。
 - [ ] P5 环境验收：干净 Windows 无 Node/WebView2、完整 NSIS 安装卸载/签名、提权/跨会话/远程对抗、远端 CI（本次未配置）；未发布公共 npm 包。
+
+## v0.3.0 便携发布（2026-10-18）
+
+- [x] 同步 workspace、GUI、CLI 与锁文件版本为 0.3.0，包含设置页圆形滑块开关；README 与 CLI 文档统一为 GUI/CLI 同包便携发布。
+- [x] 普通 Windows 用户环境：pnpm test（版本脚本 1 项、前端 42 项）、lint、typecheck；Rust fmt/check/clippy/test 工作区检查通过（122 通过、7 忽略）。历史失败记录保留，不以忽略的真实环境专项作为验证通过。
+- [x] JSON Schema 2020-12、秘密哨兵、参数错误退出码与 Unicode 输出检查通过。
+- [x] v0.3.0 GUI/CLI release 构建通过；便携 ZIP 白名单（8 个文件）、x64 架构、两端版本、逐文件哈希通过。打包后的原生桌面启动有非零窗口句柄，CLI 通过 IPC 返回默认未授权/退出 4；Unicode 与 UTF-8 无 BOM 重定向通过。未开启访问权限、未触发真实账号刷新，测试进程已关闭。
+- [ ] 干净 Windows、真实账号范围、设置开关原生交互、多屏/DPI、长期运行仍待验证；本版不发布安装程序、独立 CLI ZIP 或 npm 包。
