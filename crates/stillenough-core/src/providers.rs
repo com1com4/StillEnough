@@ -80,7 +80,81 @@ fn claude() -> ProviderDescriptor {
             authorization_label: "我授权只读 Claude Code 本地订阅登录凭据，仅用于查询用量；不刷新令牌或改写文件",
             network_note: "查询使用应用的网络设置，支持 HTTP、SOCKS5 和 SOCKS5h 代理。" }
 }
+fn regional(id: &'static str) -> ProviderDescriptor {
+    let (name, url, capability, limitation) = match id {
+        "kimi_api_cn" => (
+            "Kimi / Moonshot API（国内）",
+            "https://api.moonshot.cn",
+            "API 钱包余额",
+            "使用国内 Moonshot 开放平台 API Key；与 Kimi Code 套餐独立，币种仅按返回值确认。",
+        ),
+        "kimi_api_intl" => (
+            "Kimi / Moonshot API（海外）",
+            "https://api.moonshot.ai",
+            "API 钱包余额（USD）",
+            "使用海外 Moonshot 开放平台 API Key；与 Kimi Code 套餐独立。",
+        ),
+        "minimax_api_intl" => (
+            "MiniMax API（海外）",
+            "https://api.minimax.io",
+            "API 钱包可用金额 / 现金余额",
+            "使用海外普通 API Key；币种未返回时显示未知，不推定 USD。",
+        ),
+        "minimax_token_plan_intl" => (
+            "MiniMax Token Plan（海外）",
+            "https://www.minimax.io",
+            "Token Plan 通用额度 · 5 小时 / 周窗口",
+            "使用海外 Token Plan Key；仅显示接口明确返回的有效窗口。",
+        ),
+        "glm_coding_cn" => (
+            "GLM Coding Plan（国内）",
+            "https://open.bigmodel.cn",
+            "编程套餐额度 / 工具调用额度",
+            "使用智谱国内 Coding Plan Key；只读官方插件查询接口，不代表 API 钱包余额。",
+        ),
+        "glm_coding_intl" => (
+            "GLM Coding Plan（海外 Z.ai）",
+            "https://api.z.ai",
+            "编程套餐额度 / 工具调用额度",
+            "使用 Z.ai Coding Plan Key；接口可能变化，未报告的窗口和重置时间不推测。",
+        ),
+        "kimi_coding_cn" => (
+            "Kimi Code（国内）",
+            "https://api.kimi.com",
+            "编程订阅额度 · 接口报告窗口",
+            "使用 Kimi Code 订阅 Key，不支持 Moonshot API 钱包 Key；接口可能变化，月额度可能缺失。",
+        ),
+        "kimi_coding_intl" => (
+            "Kimi Code（海外）",
+            "https://api.kimi.ai",
+            "编程订阅额度 · 接口报告窗口",
+            "使用对应海外 Kimi Code Key；地区、套餐和窗口待实测，不将订阅额度当作 API 余额。",
+        ),
+        _ => unreachable!(),
+    };
+    ProviderDescriptor {
+        id,
+        name,
+        supported: true,
+        auth_method: "api_key",
+        base_urls: vec![url],
+        capability,
+        status: "实验性 / 待真实账号验证",
+        limitation,
+        setup_instructions: "请填写对应地区的套餐或 API Key，然后测试连接；不同地区凭据不可混用。",
+        authorization_label: "",
+        network_note: "使用应用全局或账号网络设置；不跟随重定向。",
+    }
+}
 pub const PROVIDER_IDS: &[&str] = &[
+    "kimi_api_cn",
+    "kimi_api_intl",
+    "minimax_api_intl",
+    "minimax_token_plan_intl",
+    "glm_coding_cn",
+    "glm_coding_intl",
+    "kimi_coding_cn",
+    "kimi_coding_intl",
     "deepseek_api",
     "minimax_api",
     "minimax_token_plan",
@@ -92,6 +166,14 @@ pub const PROVIDER_IDS: &[&str] = &[
 ];
 pub fn descriptor(id: &str) -> Option<ProviderDescriptor> {
     Some(match id {
+        "kimi_api_cn"
+        | "kimi_api_intl"
+        | "minimax_api_intl"
+        | "minimax_token_plan_intl"
+        | "glm_coding_cn"
+        | "glm_coding_intl"
+        | "kimi_coding_cn"
+        | "kimi_coding_intl" => regional(PROVIDER_IDS.iter().copied().find(|entry| *entry == id)?),
         "deepseek_api" => deepseek(),
         "minimax_api" => plans("minimax_api"),
         "minimax_token_plan" => plans("minimax_token_plan"),

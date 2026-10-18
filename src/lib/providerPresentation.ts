@@ -27,7 +27,18 @@ export function providerName(providerId: string | undefined, fallback: string): 
 export function providerOptionLabel(provider: ProviderDescriptor): string {
   const name = providerName(provider.id, provider.name);
   if (!provider.supported) return `${name} · ${localizeProvider(provider).status}`;
-  const experimental = ["bailian_api", "bailian_token_plan"].includes(provider.id);
+  const experimental = [
+    "bailian_api",
+    "bailian_token_plan",
+    "minimax_api_intl",
+    "minimax_token_plan_intl",
+    "glm_coding_cn",
+    "glm_coding_intl",
+    "kimi_coding_cn",
+    "kimi_coding_intl",
+    "kimi_api_cn",
+    "kimi_api_intl",
+  ].includes(provider.id);
   return experimental ? `${name}${t("connection.experimental")}` : name;
 }
 

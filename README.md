@@ -47,7 +47,7 @@ Windows 桌面的 AI 额度与余额监控工具。集中查看多个平台的�
 
 “已接入”表示应用提供连接、测试读取和后台刷新功能。“用户实测读取成功”依据 2026-10-16 的用户反馈，仅代表已使用账号的读取结果，不表示所有套餐、地区或长期运行都已验证。来源与实测记录见 [平台说明](docs/PROVIDERS.md)。
 
-Codex app-server 适配器保留用于已有账号管理，暂不开放新增入口；新增 Codex 账号使用 HTTP 方式。Kimi、GLM、Gemini、Antigravity 尚未接入。
+Codex app-server 适配器保留用于已有账号管理，暂不开放新增入口；新增 Codex 账号使用 HTTP 方式。已新增 MiniMax 海外 API/Token Plan、GLM 国内/海外 Coding Plan、Kimi 国内/海外 Code 与 Moonshot API 余额入口，均标为实验性、待真实账号验证。GLM API 钱包缺少可靠查询契约，暂未接入；Gemini、Antigravity 尚未接入。
 
 ## 使用
 

@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "code": 200,
+  "data": {
+    "limits": [
+      {
+        "type": "TOKENS_LIMIT",
+        "percentage": 25
+      },
+      {
+        "type": "TIME_LIMIT",
+        "percentage": 100
+      }
+    ]
+  }
+}

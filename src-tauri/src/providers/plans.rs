@@ -33,7 +33,7 @@ impl Provider for PlanProvider {
             self.validate_url(url)
                 .map_err(|_| FetchError::new("unsupported"))?;
             let request = match self.0 {
-                "minimax_api" => {
+                "minimax_api" | "minimax_api_intl" => {
                     if !key.starts_with("sk-api-") {
                         return Err(FetchError::new("auth_required"));
                     }
@@ -41,7 +41,7 @@ impl Provider for PlanProvider {
                         .get(format!("{url}/account/query_balance"))
                         .bearer_auth(key)
                 }
-                "minimax_token_plan" => client
+                "minimax_token_plan" | "minimax_token_plan_intl" => client
                     .get(format!("{url}/v1/token_plan/remains"))
                     .bearer_auth(key)
                     .header("Content-Type", "application/json"),
@@ -99,7 +99,7 @@ fn encode(s: &str) -> String {
         .collect()
 }
 
-async fn read_response(request: reqwest::RequestBuilder) -> Result<Vec<u8>, FetchError> {
+pub(super) async fn read_response(request: reqwest::RequestBuilder) -> Result<Vec<u8>, FetchError> {
     let mut response = request
         .header("Accept", "application/json")
         .send()
@@ -187,7 +187,7 @@ pub fn parse(id: &str, body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, Fetch
         serde_json::from_slice(body).map_err(|_| FetchError::new("schema_changed"))?;
     let invalid = || FetchError::new("schema_changed");
     let mut metrics = match id {
-        "minimax_api" => {
+        "minimax_api" | "minimax_api_intl" => {
             match root["base_resp"]["status_code"].as_i64() {
                 Some(0) => {}
                 Some(1004 | 2049) => return Err(FetchError::new("auth_required")),
@@ -220,7 +220,7 @@ pub fn parse(id: &str, body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, Fetch
             }
             metrics
         }
-        "minimax_token_plan" => {
+        "minimax_token_plan" | "minimax_token_plan_intl" => {
             match root["base_resp"]["status_code"].as_i64() {
                 Some(0) => {}
                 Some(1004 | 2049) => return Err(FetchError::new("auth_required")),

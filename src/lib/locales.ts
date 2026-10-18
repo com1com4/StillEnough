@@ -1,5 +1,8 @@
 /** Each key stores [Simplified Chinese, English]. Keep named parameters identical. */
 export const messages = {
+  "metric.voucherBalance": ["代金券余额", "Voucher balance"],
+  "metric.glmTokens": ["GLM Token 额度", "GLM Token quota"],
+  "metric.glmTools": ["GLM 工具调用额度", "GLM Tool quota"],
   "metric.currencyNotProvided": ["{label}（币种未提供）", "{label} (currency not provided)"],
   "metric.currencyUnknown": ["{label}（未知币种）", "{label} (unknown currency)"],
   "currency.unknown": ["未知币种", "Unknown currency"],
@@ -8,6 +11,174 @@ export const messages = {
   "provider.codex_http.name": ["Codex · HTTP", "Codex · HTTP"],
   "provider.claude_code.name": ["Claude Code", "Claude Code"],
   "provider.deepseek_api.name": ["DeepSeek API", "DeepSeek API"],
+  "provider.minimax_api_intl.name": ["MiniMax API（海外）", "MiniMax API (International)"],
+  "provider.minimax_api_intl.status": [
+    "实验性 / 待真实账号验证",
+    "Experimental / Real-account validation pending",
+  ],
+  "provider.minimax_api_intl.capability": ["API 钱包余额", "API wallet balance"],
+  "provider.minimax_api_intl.limitation": [
+    "使用对应地区与产品的 Key；接口可能变化，缺失额度、币种或重置时间不推测。真实账号待验证。",
+    "Use a key for the selected region and product. Endpoints may change. Missing quota, currency and resets are not inferred. Real-account validation pending.",
+  ],
+  "provider.minimax_api_intl.setupInstructions": [
+    "填写对应地区与产品的 Key，然后测试连接。",
+    "Enter the key for this region and product, then test the connection.",
+  ],
+  "provider.minimax_api_intl.networkNote": [
+    "使用应用全局或账号网络设置；不跟随重定向。",
+    "Uses global or account network settings; redirects are rejected.",
+  ],
+  "provider.minimax_token_plan_intl.name": [
+    "MiniMax Token Plan（海外）",
+    "MiniMax Token Plan (International)",
+  ],
+  "provider.minimax_token_plan_intl.status": [
+    "实验性 / 待真实账号验证",
+    "Experimental / Real-account validation pending",
+  ],
+  "provider.minimax_token_plan_intl.capability": [
+    "订阅套餐额度 · 仅接口报告的窗口",
+    "Subscription quota \u00b7 Reported windows only",
+  ],
+  "provider.minimax_token_plan_intl.limitation": [
+    "使用对应地区与产品的 Key；接口可能变化，缺失额度、币种或重置时间不推测。真实账号待验证。",
+    "Use a key for the selected region and product. Endpoints may change. Missing quota, currency and resets are not inferred. Real-account validation pending.",
+  ],
+  "provider.minimax_token_plan_intl.setupInstructions": [
+    "填写对应地区与产品的 Key，然后测试连接。",
+    "Enter the key for this region and product, then test the connection.",
+  ],
+  "provider.minimax_token_plan_intl.networkNote": [
+    "使用应用全局或账号网络设置；不跟随重定向。",
+    "Uses global or account network settings; redirects are rejected.",
+  ],
+  "provider.glm_coding_cn.name": ["GLM Coding Plan（国内）", "GLM Coding Plan (China)"],
+  "provider.glm_coding_cn.status": [
+    "实验性 / 待真实账号验证",
+    "Experimental / Real-account validation pending",
+  ],
+  "provider.glm_coding_cn.capability": [
+    "订阅套餐额度 · 仅接口报告的窗口",
+    "Subscription quota \u00b7 Reported windows only",
+  ],
+  "provider.glm_coding_cn.limitation": [
+    "使用对应地区与产品的 Key；接口可能变化，缺失额度、币种或重置时间不推测。真实账号待验证。",
+    "Use a key for the selected region and product. Endpoints may change. Missing quota, currency and resets are not inferred. Real-account validation pending.",
+  ],
+  "provider.glm_coding_cn.setupInstructions": [
+    "填写对应地区与产品的 Key，然后测试连接。",
+    "Enter the key for this region and product, then test the connection.",
+  ],
+  "provider.glm_coding_cn.networkNote": [
+    "使用应用全局或账号网络设置；不跟随重定向。",
+    "Uses global or account network settings; redirects are rejected.",
+  ],
+  "provider.glm_coding_intl.name": ["GLM Coding Plan（海外 Z.ai）", "GLM Coding Plan (Z.ai)"],
+  "provider.glm_coding_intl.status": [
+    "实验性 / 待真实账号验证",
+    "Experimental / Real-account validation pending",
+  ],
+  "provider.glm_coding_intl.capability": [
+    "订阅套餐额度 · 仅接口报告的窗口",
+    "Subscription quota \u00b7 Reported windows only",
+  ],
+  "provider.glm_coding_intl.limitation": [
+    "使用对应地区与产品的 Key；接口可能变化，缺失额度、币种或重置时间不推测。真实账号待验证。",
+    "Use a key for the selected region and product. Endpoints may change. Missing quota, currency and resets are not inferred. Real-account validation pending.",
+  ],
+  "provider.glm_coding_intl.setupInstructions": [
+    "填写对应地区与产品的 Key，然后测试连接。",
+    "Enter the key for this region and product, then test the connection.",
+  ],
+  "provider.glm_coding_intl.networkNote": [
+    "使用应用全局或账号网络设置；不跟随重定向。",
+    "Uses global or account network settings; redirects are rejected.",
+  ],
+  "provider.kimi_coding_cn.name": ["Kimi Code（国内）", "Kimi Code (China)"],
+  "provider.kimi_coding_cn.status": [
+    "实验性 / 待真实账号验证",
+    "Experimental / Real-account validation pending",
+  ],
+  "provider.kimi_coding_cn.capability": [
+    "订阅套餐额度 · 仅接口报告的窗口",
+    "Subscription quota \u00b7 Reported windows only",
+  ],
+  "provider.kimi_coding_cn.limitation": [
+    "使用对应地区与产品的 Key；接口可能变化，缺失额度、币种或重置时间不推测。真实账号待验证。",
+    "Use a key for the selected region and product. Endpoints may change. Missing quota, currency and resets are not inferred. Real-account validation pending.",
+  ],
+  "provider.kimi_coding_cn.setupInstructions": [
+    "填写对应地区的 Key，然后测试连接。Kimi Code 不使用 Moonshot API 钱包 Key。",
+    "Enter the key for this region and product, then test the connection. Kimi Code requires a subscription key, not a Moonshot wallet key.",
+  ],
+  "provider.kimi_coding_cn.networkNote": [
+    "使用应用全局或账号网络设置；不跟随重定向。",
+    "Uses global or account network settings; redirects are rejected.",
+  ],
+  "provider.kimi_coding_intl.name": ["Kimi Code（海外）", "Kimi Code (International)"],
+  "provider.kimi_coding_intl.status": [
+    "实验性 / 待真实账号验证",
+    "Experimental / Real-account validation pending",
+  ],
+  "provider.kimi_coding_intl.capability": [
+    "订阅套餐额度 · 仅接口报告的窗口",
+    "Subscription quota \u00b7 Reported windows only",
+  ],
+  "provider.kimi_coding_intl.limitation": [
+    "使用对应地区与产品的 Key；接口可能变化，缺失额度、币种或重置时间不推测。真实账号待验证。",
+    "Use a key for the selected region and product. Endpoints may change. Missing quota, currency and resets are not inferred. Real-account validation pending.",
+  ],
+  "provider.kimi_coding_intl.setupInstructions": [
+    "填写对应地区的 Key，然后测试连接。Kimi Code 不使用 Moonshot API 钱包 Key。",
+    "Enter the key for this region and product, then test the connection. Kimi Code requires a subscription key, not a Moonshot wallet key.",
+  ],
+  "provider.kimi_coding_intl.networkNote": [
+    "使用应用全局或账号网络设置；不跟随重定向。",
+    "Uses global or account network settings; redirects are rejected.",
+  ],
+  "provider.kimi_api_cn.name": ["Kimi / Moonshot API（国内）", "Kimi / Moonshot API (China)"],
+  "provider.kimi_api_cn.capability": [
+    "API 钱包余额（与订阅套餐独立）",
+    "API wallet balance (separate from subscription quota)",
+  ],
+  "provider.kimi_api_cn.status": [
+    "实验性 / 待真实账号验证",
+    "Experimental / Real-account validation pending",
+  ],
+  "provider.kimi_api_cn.limitation": [
+    "使用对应地区的 Moonshot 开放平台 API Key，不使用 Kimi Code 套餐 Key。国内未返回币种时显示未知币种。",
+    "Use the Moonshot Open Platform API key for this region, not a Kimi Code subscription key. China currency remains unknown when absent.",
+  ],
+  "provider.kimi_api_cn.setupInstructions": [
+    "填写对应地区开放平台的 API Key，然后测试连接。",
+    "Enter the API key from this region\u2019s Open Platform, then test the connection.",
+  ],
+  "provider.kimi_api_cn.networkNote": [
+    "使用应用全局或账号网络设置；不跟随重定向。",
+    "Uses global or account network settings; redirects are rejected.",
+  ],
+  "provider.kimi_api_intl.name": ["Kimi / Moonshot API（海外）", "Kimi / Moonshot API (International)"],
+  "provider.kimi_api_intl.capability": [
+    "API 钱包余额（与订阅套餐独立）",
+    "API wallet balance (separate from subscription quota)",
+  ],
+  "provider.kimi_api_intl.status": [
+    "实验性 / 待真实账号验证",
+    "Experimental / Real-account validation pending",
+  ],
+  "provider.kimi_api_intl.limitation": [
+    "使用对应地区的 Moonshot 开放平台 API Key，不使用 Kimi Code 套餐 Key。国内未返回币种时显示未知币种。",
+    "Use the Moonshot Open Platform API key for this region, not a Kimi Code subscription key. China currency remains unknown when absent.",
+  ],
+  "provider.kimi_api_intl.setupInstructions": [
+    "填写对应地区开放平台的 API Key，然后测试连接。",
+    "Enter the API key from this region\u2019s Open Platform, then test the connection.",
+  ],
+  "provider.kimi_api_intl.networkNote": [
+    "使用应用全局或账号网络设置；不跟随重定向。",
+    "Uses global or account network settings; redirects are rejected.",
+  ],
   "provider.minimax_api.name": ["MiniMax API", "MiniMax API"],
   "provider.minimax_token_plan.name": ["MiniMax Token Plan", "MiniMax Token Plan"],
   "provider.bailian_api.name": [

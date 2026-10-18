@@ -4,6 +4,7 @@ pub mod codex;
 pub mod codex_http;
 pub mod deepseek;
 pub mod plans;
+mod regional;
 pub mod registry;
 mod subscription;
 use crate::domain::models::{ProviderDescriptor, QuotaMetric};

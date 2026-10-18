@@ -12,6 +12,20 @@ pub fn get_provider(id: &str) -> Option<Box<dyn Provider>> {
         "minimax_token_plan" => Some(Box::new(PlanProvider("minimax_token_plan"))),
         "bailian_token_plan" => Some(Box::new(BailianCliProvider)),
         "bailian_api" => Some(Box::new(PlanProvider("bailian_api"))),
+        "minimax_api_intl" => Some(Box::new(PlanProvider("minimax_api_intl"))),
+        "minimax_token_plan_intl" => Some(Box::new(PlanProvider("minimax_token_plan_intl"))),
+        "glm_coding_cn" => Some(Box::new(super::regional::RegionalProvider("glm_coding_cn"))),
+        "glm_coding_intl" => Some(Box::new(super::regional::RegionalProvider(
+            "glm_coding_intl",
+        ))),
+        "kimi_coding_cn" => Some(Box::new(super::regional::RegionalProvider(
+            "kimi_coding_cn",
+        ))),
+        "kimi_coding_intl" => Some(Box::new(super::regional::RegionalProvider(
+            "kimi_coding_intl",
+        ))),
+        "kimi_api_cn" => Some(Box::new(super::regional::RegionalProvider("kimi_api_cn"))),
+        "kimi_api_intl" => Some(Box::new(super::regional::RegionalProvider("kimi_api_intl"))),
         _ => None,
     }
 }

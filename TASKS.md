@@ -67,3 +67,16 @@
 - [x] JSON Schema 2020-12、秘密哨兵、参数错误退出码与 Unicode 输出检查通过。
 - [x] v0.3.0 GUI/CLI release 构建通过；便携 ZIP 白名单（8 个文件）、x64 架构、两端版本、逐文件哈希通过。打包后的原生桌面启动有非零窗口句柄，CLI 通过 IPC 返回默认未授权/退出 4；Unicode 与 UTF-8 无 BOM 重定向通过。未开启访问权限、未触发真实账号刷新，测试进程已关闭。
 - [ ] 干净 Windows、真实账号范围、设置开关原生交互、多屏/DPI、长期运行仍待验证；本版不发布安装程序、独立 CLI ZIP 或 npm 包。
+
+## 地区 Provider 扩展（2026-10-18）
+
+- [x] MiniMax 海外 API/Token Plan、GLM 国内/海外 Coding Plan、Kimi 国内/海外 Code：共享注册表、桌面适配、CLI 描述、双语连接说明和实验性标识。
+- [x] 合成 fixture 与额度方向、耗尽、缺失、非法数值、日期和官方地址白名单测试已编写；来源见 docs/PROVIDERS.md。
+- [ ] 新地区真实账号读取、官方页面数值/重置对照和 Windows 原生添加/刷新流程。
+
+- [x] Kimi / Moonshot 国内、海外 API 余额独立入口及负余额、币种与缺字段合成测试。
+- [ ] GLM 国内/海外 API 钱包：缺少可靠官方查询契约，详见 docs/PROVIDERS.md blocker。
+
+本次验证：普通 Windows 用户环境（2026-10-18），pnpm typecheck/lint/test/build 通过（版本脚本 1 项、前端 42 项）；cargo fmt/check（clippy 隐含编译）/clippy --workspace --all-targets --locked -- -D warnings 通过；cargo test --workspace --locked -- --test-threads=1 通过，共 126 项、7 项真实环境专项忽略。最初沙箱内 pnpm/TEMP/命名管道失败；工作区 TEMP 下并行 Rust 检查也发生 CLI 发现及网络子进程失败，改为默认系统 TEMP、普通用户环境串行复核后全部通过。未查询真实账号，未进行原生添加/刷新验收，未构建发布安装包。
+
+运行：pnpm tauri dev（桌面），pnpm dev（仅前端预览）；设置连接时按产品和地区选择独立入口，输入对应 API 或套餐 Key 并测试连接。下一步为新增地区账号与官方页面对照；GLM 钱包继续等待可靠接口契约。
