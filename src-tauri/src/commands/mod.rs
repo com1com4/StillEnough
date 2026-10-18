@@ -30,7 +30,7 @@ pub fn revision(state: &AppState) -> u64 {
 }
 
 /// Bumps the revision and tells both windows the state moved on.
-pub fn publish(app: &AppHandle, state: &AppState) -> u64 {
+pub fn publish<R: tauri::Runtime>(app: &AppHandle<R>, state: &AppState) -> u64 {
     let next = state.revision.fetch_add(1, Ordering::AcqRel) + 1;
     let _ = app.emit("state-changed", next);
     // Older builds listen for this name; keeping it costs nothing and lets a
@@ -72,7 +72,9 @@ pub fn list_accounts(state: State<'_, AppState>) -> Result<Vec<Account>, String>
     Ok(accounts)
 }
 
-fn require_main(window: &tauri::WebviewWindow) -> Result<(), String> {
+pub(crate) fn require_main<R: tauri::Runtime>(
+    window: &tauri::WebviewWindow<R>,
+) -> Result<(), String> {
     if window.label() == "main" {
         Ok(())
     } else {
@@ -740,6 +742,19 @@ pub async fn clear_all_data(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn agent_permissions_use_the_main_window_guard() {
+        let app = tauri::test::mock_app();
+        let main = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+            .build()
+            .unwrap();
+        let widget = tauri::WebviewWindowBuilder::new(&app, "widget", Default::default())
+            .build()
+            .unwrap();
+        assert!(require_main(&main).is_ok());
+        assert!(require_main(&widget).is_err());
+    }
 
     #[test]
     fn widget_position_keeps_visible_coordinates_and_recovers_offscreen() {

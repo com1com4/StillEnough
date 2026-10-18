@@ -16,9 +16,11 @@ name = "stillenough_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
+embed-resource = "3"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+stillenough-core = { path = "../crates/stillenough-core" }
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
@@ -36,13 +38,8 @@ base64 = "0.22"
 tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util"] }
 
 
-# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
-[profile.release]
-codegen-units = 1
-lto = true
-opt-level = 3
-panic = "abort"
-strip = true
-
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
+
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }

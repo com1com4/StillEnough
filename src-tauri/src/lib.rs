@@ -1,3 +1,8 @@
+#[cfg(all(test, windows))]
+#[link(name = "test-manifest", kind = "static")]
+extern "C" {}
+
+mod agent;
 mod commands;
 mod domain;
 mod infra;
@@ -201,6 +206,10 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let data_dir = app.path().app_local_data_dir()?;
+            #[cfg(windows)]
+            app.manage(
+                stillenough_core::windows::owner_lock(&data_dir).map_err(std::io::Error::other)?,
+            );
             std::fs::create_dir_all(&data_dir)?;
             let production = open_database(&data_dir.join("ai-plan-manager.sqlite"))
                 .map_err(std::io::Error::other)?;
@@ -213,6 +222,9 @@ pub fn run() {
                 runtime,
                 revision: std::sync::atomic::AtomicU64::new(0),
             });
+            app.manage(agent::AgentRuntime::default());
+            #[cfg(windows)]
+            agent::start(app.handle().clone(), data_dir).map_err(std::io::Error::other)?;
             services::connections::start_scheduler(app.handle().clone());
             commands::restore_widget_on_launch(app.handle());
             create_tray(app)?;
@@ -230,6 +242,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            agent::get_agent_access,
+            agent::set_agent_access,
             commands::list_accounts,
             commands::list_provider_descriptors,
             commands::begin_connection_setup,

@@ -16,14 +16,26 @@ pub fn get_provider(id: &str) -> Option<Box<dyn Provider>> {
     }
 }
 pub fn descriptors() -> Vec<ProviderDescriptor> {
-    let mut entries = vec![DeepSeekProvider.descriptor()];
-    entries.extend(
-        ["minimax_api", "minimax_token_plan", "bailian_api"]
-            .map(|id| PlanProvider(id).descriptor()),
-    );
-    entries.push(BailianCliProvider.descriptor());
-    entries.push(super::codex_http::CodexHttpProvider.descriptor());
-    entries.push(super::codex::CodexProvider.descriptor());
-    entries.push(super::claude::ClaudeProvider.descriptor());
-    entries
+    stillenough_core::providers::descriptors()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn desktop_registry_matches_shared_catalog() {
+        let entries = descriptors();
+        assert_eq!(
+            entries.len(),
+            stillenough_core::providers::PROVIDER_IDS.len()
+        );
+        for descriptor in entries {
+            let provider =
+                get_provider(descriptor.id).expect("catalog entry has a desktop adapter");
+            assert_eq!(
+                serde_json::to_value(provider.descriptor()).unwrap(),
+                serde_json::to_value(descriptor).unwrap()
+            );
+        }
+    }
 }

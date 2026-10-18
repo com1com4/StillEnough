@@ -13,8 +13,9 @@ test("版本升级同步应用配置和锁文件，检查拒绝漂移与非法�
     for (const path of [
       "scripts/version.mjs",
       "package.json",
+      "Cargo.toml",
       "src-tauri/Cargo.toml",
-      "src-tauri/Cargo.lock",
+      "Cargo.lock",
       "src-tauri/tauri.conf.json",
     ]) {
       copyFileSync(new URL("../" + path, import.meta.url), join(dir, path));

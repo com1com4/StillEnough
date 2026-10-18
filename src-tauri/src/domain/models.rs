@@ -49,21 +49,7 @@ pub struct AccountInput {
     #[serde(default)]
     pub network: crate::services::network::NetworkConfig,
 }
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProviderDescriptor {
-    pub id: &'static str,
-    pub name: &'static str,
-    pub supported: bool,
-    pub auth_method: &'static str,
-    pub base_urls: Vec<&'static str>,
-    pub capability: &'static str,
-    pub status: &'static str,
-    pub limitation: &'static str,
-    pub setup_instructions: &'static str,
-    pub authorization_label: &'static str,
-    pub network_note: &'static str,
-}
+pub use stillenough_core::providers::ProviderDescriptor;
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProbeResult {

@@ -1,3 +1,4 @@
+import { AgentAccessSettings } from "./AgentAccessSettings";
 import { providerName } from "../lib/providerPresentation";
 import { t, currentLanguage } from "../lib/i18n";
 import { NetworkSettings } from "./NetworkSettings";
@@ -182,6 +183,7 @@ export function SettingsPage({
           </select>
         </div>
       </section>
+      <AgentAccessSettings />
       <NetworkSettings accounts={accounts} />
       <div className="settings-card">
         <div className="settings-row column">

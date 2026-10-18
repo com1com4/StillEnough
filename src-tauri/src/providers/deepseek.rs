@@ -94,20 +94,7 @@ pub fn status_error(status: u16, retry: Option<&str>) -> Option<FetchError> {
 }
 impl Provider for DeepSeekProvider {
     fn descriptor(&self) -> ProviderDescriptor {
-        ProviderDescriptor {
-            id: "deepseek_api",
-            name: "DeepSeek API",
-            supported: true,
-            auth_method: "api_key",
-            base_urls: vec!["https://api.deepseek.com"],
-            capability: "API 账号可用余额（按接口返回币种）",
-            status: "实验性 / 待真实账号验证",
-            setup_instructions: "",
-            authorization_label: "",
-            network_note: "",
-            limitation:
-                "只读取钱包余额，不读取编程套餐额度；接口不返回账号身份，按所配置的 Key 绑定",
-        }
+        stillenough_core::providers::descriptor("deepseek_api").expect("registered provider")
     }
     fn validate_url(&self, url: &str) -> Result<(), String> {
         // Exact approved origin, no paths, credentials, queries, fragments, or redirects.

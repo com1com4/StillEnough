@@ -82,10 +82,10 @@ pnpm typecheck
 pnpm lint
 pnpm test
 pnpm build
-cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
-cargo check --manifest-path src-tauri/Cargo.toml --locked
-cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
-cargo test --manifest-path src-tauri/Cargo.toml --locked
+cargo fmt --all -- --check
+cargo check --workspace --locked
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
 ```
 
 前端测试包含版本脚本、历史分段、展示、主题和浮窗排序；Rust 测试覆盖解析、错误处理、迁移、告警与状态管理。真实账号和 Windows 交互另行验证。
@@ -98,7 +98,7 @@ pnpm tauri build --no-bundle
 pnpm tauri build --bundles nsis
 ```
 
-可执行文件位于 src-tauri/target/release/stillenough.exe，安装包位于 src-tauri/target/release/bundle/nsis/。pnpm build 只构建前端。版本升级见 [版本管理](docs/VERSIONING.md)。
+可执行文件位于 target/release/stillenough.exe，安装包位于 target/release/bundle/nsis/。pnpm build 只构建前端。版本升级见 [版本管理](docs/VERSIONING.md)。
 
 ## 数据与隐私
 
@@ -125,3 +125,18 @@ pnpm tauri build --bundles nsis
 源码采用 [MIT License](LICENSE)。第三方图标及依赖保留各自许可，见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
 平台适配参考官方公开资料与 CodexBar 的接口研究，具体固定提交见适配器文档。本项目为独立工具，不代表平台官方产品或合作关系。
+
+## CLI / AI Agent
+
+在主窗口“设置 → CLI / AI Agent 访问”开启权限后，可从 PowerShell 或 Agent 查询：
+
+```powershell
+pnpm cli -- accounts list --json
+pnpm cli -- quota --json
+pnpm cli -- refresh --all --json
+pnpm cli -- doctor --json
+```
+
+version/providers 无需桌面或授权。账号查询优先调用桌面命名管道；端点不存在时仅回退已授权只读缓存。刷新共用桌面后台，CLI 不读取凭据或直接联网。支持 --offline、--require-fresh、--timeout；旧值不补额，钱包不计算百分比。详见 [CLI 使用说明](docs/CLI.md)、[实施与验证记录](docs/CLI-IMPLEMENTATION.md)。
+
+`pnpm cli:build` 生成独立 CLI；`pnpm cli:package` 生成本地 ZIP/npm 包；`pnpm desktop:bundle` 构建附带 CLI 的 NSIS 桌面安装包。独立 Windows CLI 不需要 Node/WebView2；npm wrapper 需要 Node，真实刷新仍需桌面。尚未发布公共 npm 包，也未修改系统 PATH。

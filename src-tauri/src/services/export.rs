@@ -204,6 +204,8 @@ pub fn clear_all(db: &mut rusqlite::Connection) -> Result<usize, String> {
         [],
     )
     .map_err(|error| format!("凭据清理登记失败：{error}"))?;
+    tx.execute("DELETE FROM app_settings WHERE key='agent_access'", [])
+        .map_err(|_| "撤销 Agent 权限失败")?;
     let removed = tx
         .execute("DELETE FROM accounts", [])
         .map_err(|error| format!("清库失败：{error}"))?;

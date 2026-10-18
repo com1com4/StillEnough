@@ -34,7 +34,11 @@ pub struct Gate {
     pub next_attempt: Instant,
     pub failures: usize,
 }
+#[cfg(test)]
+type TestFetch = Arc<dyn Fn() -> crate::providers::FetchFuture<'static> + Send + Sync>;
 pub struct Runtime {
+    #[cfg(test)]
+    pub test_fetch: Mutex<Option<TestFetch>>,
     pub network: super::network::Network,
     pub sessions: Mutex<HashMap<String, Setup>>,
     pub gates: Mutex<HashMap<String, Gate>>,
@@ -44,6 +48,8 @@ pub struct Runtime {
 impl Runtime {
     pub fn new() -> Result<Self, String> {
         Ok(Self {
+            #[cfg(test)]
+            test_fetch: Mutex::new(None),
             network: super::network::Network::new(),
             sessions: Mutex::new(HashMap::new()),
             gates: Mutex::new(HashMap::new()),
@@ -148,6 +154,19 @@ async fn fetch(
     input: &AccountInput,
     key: &str,
 ) -> Result<Vec<QuotaMetric>, FetchError> {
+    fetch_guarded(runtime, input, key, None).await
+}
+
+type AccessGuard<'a> = &'a (dyn Fn() -> Result<(), FetchError> + Send + Sync);
+async fn fetch_guarded(
+    runtime: &Runtime,
+    input: &AccountInput,
+    key: &str,
+    guard: Option<AccessGuard<'_>>,
+) -> Result<Vec<QuotaMetric>, FetchError> {
+    if let Some(check) = guard {
+        check()?;
+    }
     let scope = format!("{}:{}", input.provider_id, input.base_url);
     let cooldown = runtime
         .provider_cooldown
@@ -168,10 +187,45 @@ async fn fetch(
         .acquire()
         .await
         .map_err(|_| FetchError::new("network_error"))?;
+    // 等待 semaphore 后必须再检查撤销和同平台冷却。
+    if let Some(check) = guard {
+        check()?;
+    }
+    if let Some(until) = runtime
+        .provider_cooldown
+        .lock()
+        .map_err(|_| FetchError::new("network_error"))?
+        .get(&scope)
+        .copied()
+        .filter(|until| remaining_wait(*until))
+    {
+        let mut error = FetchError::new("rate_limited");
+        error.retry_after_seconds = until
+            .saturating_duration_since(Instant::now())
+            .as_secs()
+            .max(1);
+        return Err(error);
+    }
     let provider =
         get_provider(&input.provider_id).ok_or_else(|| FetchError::new("unsupported"))?;
     if !provider.requires_credential() && !input.cli_authorized {
         return Err(FetchError::new("cli_authorization_required"));
+    }
+    #[cfg(test)]
+    {
+        let fake = runtime.test_fetch.lock().unwrap().clone();
+        if let Some(fake) = fake {
+            let result = fake().await;
+            if let Err(e) = &result {
+                if e.code == "rate_limited" {
+                    runtime.provider_cooldown.lock().unwrap().insert(
+                        scope,
+                        Instant::now() + Duration::from_secs(e.retry_after_seconds),
+                    );
+                }
+            }
+            return result;
+        }
     }
     let config = runtime
         .network
@@ -491,13 +545,68 @@ fn manual_wait(
     short_wait || rate_wait
 }
 
+/// 所有入口共享同一后台、gates、并发与持久化；事件适配留在 host。
 pub async fn refresh(app: tauri::AppHandle, id: String, manual: bool) -> Result<(), String> {
     let state = app.state::<AppState>();
+    refresh_backend(
+        &state,
+        id,
+        manual,
+        None,
+        &|state| {
+            crate::commands::publish(&app, state);
+        },
+        &|ids| {
+            let _ = app.emit("alerts-changed", ids);
+        },
+    )
+    .await
+}
+pub async fn refresh_agent<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    id: String,
+    grant: String,
+) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let guard = || {
+        let db = db_lock(&state).map_err(|_| FetchError::new("database_error"))?;
+        let access = stillenough_core::access::load(&db.production);
+        if access.allows(true, false) && access.updated_at.as_deref() == Some(grant.as_str()) {
+            Ok(())
+        } else {
+            Err(FetchError::new("agent_access_denied"))
+        }
+    };
+    refresh_backend(
+        &state,
+        id,
+        true,
+        Some(&guard),
+        &|state| {
+            crate::commands::publish(&app, state);
+        },
+        &|ids| {
+            let _ = app.emit("alerts-changed", ids);
+        },
+    )
+    .await
+}
+async fn refresh_backend(
+    state: &AppState,
+    id: String,
+    manual: bool,
+    guard: Option<AccessGuard<'_>>,
+    publish: &(dyn Fn(&AppState) + Send + Sync),
+    emit_alerts: &(dyn Fn(Vec<i64>) + Send + Sync),
+) -> Result<(), String> {
+    if let Some(check) = guard {
+        check().map_err(|e| e.code.to_string())?;
+    }
     let configuration = {
-        let db = db_lock(&state)?;
-        let account = accounts::get(&db.production, &id)?.ok_or("账号不存在")?;
+        let db = db_lock(state)?;
+        let account = accounts::get(&db.production, &id)?.ok_or("not_found")?;
         if !account.enabled {
-            return Err("采集已暂停，请在连接中启用".into());
+            return Err("account_disabled".into());
         }
         let retry_at: Option<String> = db
             .production
@@ -508,6 +617,14 @@ pub async fn refresh(app: tauri::AppHandle, id: String, manual: bool) -> Result<
             )
             .ok()
             .flatten();
+        if account.fetch_status == "rate_limited"
+            && retry_at
+                .as_deref()
+                .and_then(|v| chrono::DateTime::parse_from_rfc3339(v).ok())
+                .is_some_and(|d| d > chrono::Utc::now())
+        {
+            return Err("rate_limited".into());
+        }
         if (manual && manual_wait(&account, chrono::Utc::now()))
             || (!manual
                 && retry_at
@@ -560,22 +677,77 @@ pub async fn refresh(app: tauri::AppHandle, id: String, manual: bool) -> Result<
         }
         gate.busy = true;
     }
-    crate::commands::publish(&app, &state);
+    publish(state);
+    let configuration_guard = || {
+        if let Some(check) = guard {
+            check()?;
+        }
+        let db = db_lock(state).map_err(|_| FetchError::new("database_error"))?;
+        let current = accounts::get(&db.production, &id)
+            .map_err(|_| FetchError::new("database_error"))?
+            .ok_or_else(|| FetchError::new("not_found"))?;
+        if !current.enabled {
+            return Err(FetchError::new("account_disabled"));
+        }
+        if get_provider(&current.provider_id).is_some_and(|p| !p.requires_credential())
+            && !current.cli_authorized
+        {
+            return Err(FetchError::new("cli_authorization_required"));
+        }
+        let revision: String = db
+            .production
+            .query_row(
+                "SELECT revision FROM connections WHERE account_id=?1",
+                [&id],
+                |row| row.get(0),
+            )
+            .map_err(|_| FetchError::new("not_found"))?;
+        if revision != configuration.2 {
+            return Err(FetchError::new("not_found"));
+        }
+        Ok(())
+    };
+    let guard: Option<AccessGuard<'_>> = Some(&configuration_guard);
     let reference = configuration.1;
     let is_cli =
         get_provider(&configuration.0.provider_id).is_some_and(|p| !p.requires_credential());
-    let key = if is_cli {
+    let permitted = guard.map(|check| check()).transpose();
+    #[cfg(test)]
+    let synthetic = state.runtime.test_fetch.lock().unwrap().is_some();
+    #[cfg(not(test))]
+    let synthetic = false;
+    let key = if let Err(e) = permitted {
+        Err(e.code.into())
+    } else if is_cli || synthetic {
         Ok(Zeroizing::new(String::new()))
     } else {
-        tauri::async_runtime::spawn_blocking(move || credentials::read(&reference))
+        tokio::task::spawn_blocking(move || credentials::read(&reference))
             .await
             .map_err(|_| "auth_required".to_string())
             .and_then(|r| r)
     };
     let result = match key {
-        Ok(key) => fetch(&state.runtime, &configuration.0, &key).await,
-        Err(_) => Err(FetchError::new("auth_required")),
+        Ok(key) => fetch_guarded(&state.runtime, &configuration.0, &key, guard).await,
+        Err(e) => Err(FetchError::new(stillenough_core::errors::classify(&e).0)),
     };
+    if result.as_ref().is_err_and(|e| {
+        matches!(
+            e.code,
+            "agent_access_denied" | "account_disabled" | "cli_authorization_required" | "not_found"
+        )
+    }) {
+        if let Ok(mut gates) = state.runtime.gates.lock() {
+            if let Some(gate) = gates.get_mut(&id) {
+                gate.busy = false;
+            }
+        }
+        publish(state);
+        return Err(result
+            .err()
+            .map(|e| e.code)
+            .unwrap_or("internal_error")
+            .into());
+    }
     let retry = {
         let minutes = state
             .settings
@@ -608,17 +780,14 @@ pub async fn refresh(app: tauri::AppHandle, id: String, manual: bool) -> Result<
         gate.next_attempt = Instant::now() + Duration::from_secs(seconds);
         seconds
     };
-    let handle = app.clone();
     let returned_error = result.as_ref().err().map(|e| e.code.to_string());
-    let finished_id = id.clone();
-    let persisted = tauri::async_runtime::spawn_blocking(move || {
-        let state = handle.state::<AppState>();
-        let monitoring = state
-            .settings
-            .lock()
-            .map(|settings| MonitoringSettings::from(&*settings))
-            .unwrap_or_default();
-        let mut db = db_lock(&state)?;
+    let monitoring = state
+        .settings
+        .lock()
+        .map(|settings| MonitoringSettings::from(&*settings))
+        .unwrap_or_default();
+    let persisted = (|| {
+        let mut db = db_lock(state)?;
         persist_outcome(
             &mut db.production,
             &id,
@@ -627,20 +796,18 @@ pub async fn refresh(app: tauri::AppHandle, id: String, manual: bool) -> Result<
             retry,
             monitoring,
         )
-    })
-    .await
-    .map_err(|_| "后台任务失败".to_string());
+    })();
     if let Ok(mut gates) = state.runtime.gates.lock() {
-        if let Some(gate) = gates.get_mut(&finished_id) {
+        if let Some(gate) = gates.get_mut(&id) {
             gate.busy = false;
         }
     }
-    crate::commands::publish(&app, &state);
-    let created = persisted??;
+    publish(state);
+    let created = persisted?;
     if !created.is_empty() {
         // The reminder exists only while the app can show it; nothing here claims a
         // delivery that would have had to happen while the process was closed.
-        let _ = app.emit("alerts-changed", created);
+        emit_alerts(created);
     }
     if let Some(error) = returned_error {
         Err(error)
@@ -684,7 +851,11 @@ fn persist_outcome(
         Err(e) => {
             tx.execute(
                 "UPDATE fetch_states SET status=?2,attempt_at=?3,error_code=?2 WHERE account_id=?1",
-                params![id, e.code, chrono::Utc::now().to_rfc3339()],
+                params![
+                    id,
+                    stillenough_core::errors::classify(e.code).0,
+                    chrono::Utc::now().to_rfc3339()
+                ],
             )
             .map_err(|_| "状态保存失败")?;
         }

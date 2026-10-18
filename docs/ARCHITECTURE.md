@@ -70,3 +70,15 @@ API 凭据通过专用 IPC 进入短期后端会话，保存时写 Windows Crede
 优先检查额度方向、缺失、重置、401/403/429、过期、并发/删除竞态、迁移、提醒去重与凭据泄露风险。真实登录/系统凭据操作专项单独启用，不默认查询真实账号。
 
 托盘、安装卸载、拖拽、多屏/DPI、睡眠、开机启动与真实平台对照不能用前端构建替代。待办见 [TASKS](../TASKS.md)。
+
+## CLI / Agent 边界（2026-10-18）
+
+根 Cargo workspace 使用唯一根 Cargo.lock。core 承载静态 Provider 描述、白名单 DTO/错误状态、新鲜度、只读快照仓储、Agent 权限格式和 Windows 管道客户端/安全辅助；CLI 仅处理参数、查询传输和输出。桌面 host 仍拥有 Provider 网络适配器、凭据、唯一 Runtime/scheduler 与 writer；没有为 CLI 创建第二 Runtime。
+
+agent_access 单独保存于 app_settings，默认拒绝，只能 main 窗口修改。Agent 服务白名单方法共用现有 AppState；refresh_backend 接收显式后台状态、权限检查与事件回调，不依赖 AppHandle。AppHandle 只保留在入口适配器中，不强行为模块搬迁复制 Provider/数据库实现。
+
+Windows 管道按 SID/会话/规范化数据目录派生，严格 DACL、拒绝远程、双向核对进程 SID/会话/提权状态，长度上限 1 MiB/16 MiB。数据目录 owner 则使用跨会话 Global 内核对象，按 SID/目录派生并持有句柄，避免同一用户不同会话启动第二 writer；无需线程拥有 mutex，进程退出时由内核释放，启动总是检查数据库完整性。
+
+writer 设置 WAL、busy_timeout，拒绝未来 schema，迁移前通过 VACUUM INTO 做一致性备份。CLI 只读开库、query_only、同一读事务检查 schema/离线权限与快照，不建库、迁移或复制主库。离线权限不隔离拥有同用户文件写权限的程序。操作记录在当前实例内有界保留，刷新超时不声称取消；授权撤销在排队后和发送结果前再次校验。
+
+实现和验证范围见 [CLI 记录](CLI-IMPLEMENTATION.md)，历史 P1 记录保留。

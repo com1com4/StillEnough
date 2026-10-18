@@ -18,13 +18,7 @@ impl Provider for CodexHttpProvider {
         false
     }
     fn descriptor(&self) -> ProviderDescriptor {
-        ProviderDescriptor { id: "codex_http", name: "Codex · HTTP", supported: true,
-            auth_method: "local_oauth", base_urls: vec![SOURCE],
-            capability: "ChatGPT 订阅额度 · 直接 HTTP 查询", status: "实验性 / 本机 HTTP 查询已实测",
-            limitation: "只读 auth.json 的访问令牌和账号标识，不使用刷新令牌、不改写文件。不支持 API Key、系统凭据库存储或浏览器凭据。过期请通过官方 CLI 重新登录；切换账号后重新测试。服务端限制时停止更新并保留旧观测。",
-            setup_instructions: "先通过官方 Codex CLI 登录 ChatGPT：\ncodex login\n尊重 CODEX_HOME，默认用户 .codex/auth.json。查询不启动 CLI；若登录只存在系统凭据库，请选择 Codex · app-server。当前来源身份未核验。",
-            authorization_label: "我授权只读 Codex 本地登录文件的访问令牌和账号标识，仅发送到 https://chatgpt.com/backend-api/wham/usage 查询额度；不刷新令牌或改写文件",
-            network_note: "使用应用全局/账号网络设置，支持 HTTP、SOCKS5 和 SOCKS5h；不跟随重定向，不自动切换 app-server。" }
+        stillenough_core::providers::descriptor("codex_http").expect("registered provider")
     }
     fn validate_url(&self, url: &str) -> Result<(), String> {
         if url == SOURCE {

@@ -15,7 +15,11 @@
     "typecheck": "tsc -b --pretty",
     "lint": "eslint src eslint.config.js vite.config.ts vitest.config.ts",
     "test": "node --test scripts/version.test.mjs && vitest run --passWithNoTests",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "cli": "node scripts/cli.mjs",
+    "cli:build": "cargo build -p stillenough-cli --release --locked",
+    "cli:package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-cli.ps1",
+    "desktop:bundle": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-desktop-with-cli.ps1"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

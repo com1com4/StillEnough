@@ -18,7 +18,8 @@ if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version ?? "")) {
   throw new Error("用法：node scripts/version.mjs <patch|minor|major|X.Y.Z|--check>");
 }
 const cargoPath = "src-tauri/Cargo.toml";
-const lockPath = "src-tauri/Cargo.lock";
+const workspace = read("Cargo.toml");
+const lockPath = "Cargo.lock";
 const cargo = read(cargoPath);
 const lock = read(lockPath);
 const cargoPattern = /(\[package\][\s\S]*?\nversion = ")([^"]+)(")/;
@@ -30,11 +31,12 @@ if (JSON.parse(read("src-tauri/tauri.conf.json")).version !== "../package.json")
   throw new Error("Tauri version 必须引用 ../package.json");
 }
 if (argument === "--check") {
-  if (cargo.match(cargoPattern)[2] !== version || lock.match(lockPattern)[2] !== version) {
+  if (!workspace.includes(`version = "${version}"`) || cargo.match(cargoPattern)[2] !== version || [...lock.matchAll(/\[\[package\]\]\r?\nname = "stillenough(?:-core|-cli)?"\r?\nversion = "([^"]+)"/g)].some((match) => match[1] !== version)) {
     throw new Error("版本不一致，请运行 pnpm version:set " + version);
   }
   console.log(`版本一致：${version}`);
 } else {
+  write("Cargo.toml", workspace.replace(/version = "[^"]+"/, `version = "${version}"`));
   manifest.version = version;
   write("package.json", JSON.stringify(manifest, null, 2) + "\n");
   write(
@@ -43,7 +45,7 @@ if (argument === "--check") {
   );
   write(
     lockPath,
-    lock.replace(lockPattern, (_, before, _old, after) => before + version + after),
+    lock.replace(/(\[\[package\]\]\r?\nname = "stillenough(?:-core|-cli)?"\r?\nversion = ")([^"]+)(")/g, (_, before, _old, after) => before + version + after),
   );
   console.log(`${current} → ${version}（${fileURLToPath(root)}）`);
 }

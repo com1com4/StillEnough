@@ -43,7 +43,7 @@ impl Provider for BailianCliProvider {
         false
     }
     fn descriptor(&self) -> ProviderDescriptor {
-        ProviderDescriptor { setup_instructions: "先在 PowerShell 安装并登录官方 CLI：\nnpm install -g bailian-cli\nbl auth login --console\n安装后重新启动本应用。切换登录后请重新测试。", authorization_label: "我授权应用调用官方百炼 CLI 查询当前登录账号的额度", network_note: "此 CLI 仅沿用自身环境；暂不支持应用指定的直连或自定义代理。", id: "bailian_token_plan", name: "阿里百炼 Token Plan", supported: true, auth_method: "cli", base_urls: vec![SOURCE], capability: "官方 CLI · 个人 Token Plan 月额度 / 已报告窗口", status: "实验性 / 待真实账号验证", limitation: "使用本机官方 bl CLI 当前登录账号。请先在 PowerShell 执行 bl auth login --console；仅查询额度，不读取或复制认证文件。共用一个 CLI 登录来源，切换登录账号后请重新测试；团队席位暂不支持。" }
+        stillenough_core::providers::descriptor("bailian_token_plan").expect("registered provider")
     }
     fn validate_url(&self, url: &str) -> Result<(), String> {
         if url == SOURCE {

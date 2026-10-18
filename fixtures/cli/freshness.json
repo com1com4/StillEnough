@@ -1,0 +1,8 @@
+[
+ {"name":"耗尽是真实零","kind":"quota","remaining":null,"percent":0,"observed":"2026-10-18T00:00:00Z","reset":null,"ttl":1200,"now":"2026-10-18T00:20:00Z","expected":"current"},
+ {"name":"缺失百分比","kind":"quota","remaining":null,"percent":null,"observed":"2026-10-18T00:00:00Z","reset":null,"ttl":1200,"now":"2026-10-18T00:20:00Z","expected":"unknown"},
+ {"name":"超过 TTL","kind":"quota","remaining":null,"percent":15,"observed":"2026-10-18T00:00:00Z","reset":null,"ttl":1200,"now":"2026-10-18T00:20:00.001Z","expected":"expired"},
+ {"name":"重置到点不补额","kind":"quota","remaining":null,"percent":15,"observed":"2026-10-18T00:00:00Z","reset":"2026-10-18T00:10:00Z","ttl":1200,"now":"2026-10-18T00:10:00Z","expected":"expired"},
+ {"name":"钱包零余额","kind":"balance","remaining":"0","percent":null,"observed":"2026-10-18T00:00:00Z","reset":null,"ttl":1200,"now":"2026-10-18T00:20:00Z","expected":"current"},
+ {"name":"观测时间无效","kind":"balance","remaining":"5.123456789","percent":null,"observed":"invalid","reset":null,"ttl":1200,"now":"2026-10-18T00:20:00Z","expected":"expired"}
+]

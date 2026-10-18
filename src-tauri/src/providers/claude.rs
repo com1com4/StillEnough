@@ -13,12 +13,7 @@ impl Provider for ClaudeProvider {
         false
     }
     fn descriptor(&self) -> ProviderDescriptor {
-        ProviderDescriptor { id: "claude_code", name: "Claude Code", supported: true, auth_method: "local_oauth",
-            base_urls: vec![SOURCE], capability: "订阅额度 · 5 小时 / 周 / 模型窗口", status: "实验性 / 待真实账号验证",
-            limitation: "只读本机 Claude Code 订阅登录，使用非公开用量接口，可能变化。不支持 API Key、第三方中转或浏览器登录；不刷新令牌。当前登录身份未核验，切换账号后请重新测试。",
-            setup_instructions: "先使用官方 Claude Code 登录订阅账号：\nclaude auth login\n凭据读取尊重 CLAUDE_CONFIG_DIR；默认当前用户 .claude 目录。每个本地来源仅添加一个账号。",
-            authorization_label: "我授权只读 Claude Code 本地订阅登录凭据，仅用于查询用量；不刷新令牌或改写文件",
-            network_note: "查询使用应用的网络设置，支持 HTTP、SOCKS5 和 SOCKS5h 代理。" }
+        stillenough_core::providers::descriptor("claude_code").expect("registered provider")
     }
     fn validate_url(&self, url: &str) -> Result<(), String> {
         if url == SOURCE {

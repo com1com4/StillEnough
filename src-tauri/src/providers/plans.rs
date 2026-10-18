@@ -11,30 +11,10 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 pub struct PlanProvider(pub &'static str);
-const MINI: &[&str] = &["https://www.minimaxi.com", "https://www.minimax.io"];
-const WALLET: &[&str] = &["https://business.aliyuncs.com"];
-const MINI_WALLET: &[&str] = &["https://api.minimax.cn", "https://api.minimax.io"];
 
 impl Provider for PlanProvider {
     fn descriptor(&self) -> ProviderDescriptor {
-        let (name, urls, auth, capability, limitation) = match self.0 {
-            "minimax_api" => ("MiniMax API", MINI_WALLET, "api_key", "API 钱包可用金额 / 现金余额", "使用 sk-api- 普通 API Key；查询源为官方 CLI 使用的账户接口，可能变化。响应未给币种时明确显示币种未知，不推定 CNY 或 USD。"),
-            "minimax_token_plan" => ("MiniMax Token Plan", MINI, "api_key", "Token Plan 通用额度 · 5 小时 / 周窗口", "中国/国际区域分别使用对应套餐 Key；只显示 general 额度，不把计数为零解释为耗尽或不限量。"),
-            _ => ("阿里百炼 API（阿里云账户余额）", WALLET, "access_key_pair", "阿里云账户现金余额 / 可用额度", "需要 AccessKey ID / Secret 及 bss:DescribeAcccount 只读权限；这是整个阿里云账户余额，不是百炼专属余额或 Token Plan 额度。"),
-        };
-        ProviderDescriptor {
-            id: self.0,
-            name,
-            supported: true,
-            auth_method: auth,
-            base_urls: urls.to_vec(),
-            capability,
-            status: "实验性 / 待真实账号验证",
-            setup_instructions: "",
-            authorization_label: "",
-            network_note: "",
-            limitation,
-        }
+        stillenough_core::providers::descriptor(self.0).expect("registered provider")
     }
     fn validate_url(&self, url: &str) -> Result<(), String> {
         if self.descriptor().base_urls.contains(&url) {

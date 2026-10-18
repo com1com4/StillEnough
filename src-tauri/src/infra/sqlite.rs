@@ -10,11 +10,58 @@ pub fn open_database(path: &Path) -> Result<Connection, String> {
     connection
         .pragma_update(None, "foreign_keys", "ON")
         .map_err(|error| error.to_string())?;
+    connection
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|_| "database_busy")?;
+    reject_future_schema(&connection)?;
+    let version: i64 = connection
+        .query_row(
+            "SELECT COALESCE(MAX(version),0) FROM schema_migrations",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+    if version < 6 && path.metadata().map(|m| m.len() > 0).unwrap_or(false) {
+        let backup = path.with_extension(format!("pre-cli-{}.sqlite", uuid::Uuid::new_v4()));
+        connection
+            .execute("VACUUM INTO ?1", [backup.to_string_lossy().as_ref()])
+            .map_err(|_| "数据库一致性备份失败，未执行迁移")?;
+    }
+    let mode: String = connection
+        .query_row("PRAGMA journal_mode=WAL", [], |r| r.get(0))
+        .map_err(|_| "数据库 WAL 初始化失败")?;
+    if mode != "wal" {
+        return Err("数据库不支持 WAL，停止启动".into());
+    }
+    let health: String = connection
+        .query_row("PRAGMA quick_check", [], |r| r.get(0))
+        .map_err(|_| "数据库完整性检查失败")?;
+    if health != "ok" {
+        return Err("数据库完整性检查失败".into());
+    }
     migrate(&connection)?;
     Ok(connection)
 }
 
+fn reject_future_schema(connection: &Connection) -> Result<(), String> {
+    let exists: bool = connection.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name='schema_migrations' AND type='table')", [], |r| r.get(0)).map_err(|_| "数据库版本读取失败")?;
+    if exists {
+        let version: i64 = connection
+            .query_row(
+                "SELECT COALESCE(MAX(version),0) FROM schema_migrations",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(|_| "数据库版本读取失败")?;
+        if version > 6 {
+            return Err("schema_incompatible".into());
+        }
+    }
+    Ok(())
+}
+
 fn migrate(connection: &Connection) -> Result<(), String> {
+    reject_future_schema(connection)?;
     let has_migrations: bool = connection.query_row(
         "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations')",
         [], |row| row.get(0),
@@ -279,5 +326,65 @@ mod tests {
                 [],
             )
             .is_err());
+    }
+}
+
+#[cfg(test)]
+mod cli_database_tests {
+    use super::*;
+    #[test]
+    fn future_schema_is_rejected_before_migration() {
+        let db = Connection::open_in_memory().unwrap();
+        db.execute_batch("CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY,applied_at TEXT);INSERT INTO schema_migrations VALUES(99,'now');").unwrap();
+        assert_eq!(migrate(&db).unwrap_err(), "schema_incompatible");
+        assert_eq!(
+            db.query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r
+                .get::<_, u32>(0))
+                .unwrap(),
+            1
+        );
+    }
+    #[test]
+    fn wal_writer_backs_up_legacy_database_consistently() {
+        let dir =
+            std::env::temp_dir().join(format!("stillenough-wal-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("data.sqlite");
+        let old = Connection::open(&path).unwrap();
+        old.execute_batch(include_str!("../../migrations/001_initial.sql"))
+            .unwrap();
+        drop(old);
+        let db = open_database(&path).unwrap();
+        assert_eq!(
+            db.query_row("PRAGMA journal_mode", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "wal"
+        );
+        assert_eq!(
+            db.query_row("SELECT MAX(version) FROM schema_migrations", [], |r| r
+                .get::<_, i64>(0))
+                .unwrap(),
+            6
+        );
+        let backups: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().contains("pre-cli-"))
+            .collect();
+        assert_eq!(backups.len(), 1);
+        let backup = Connection::open(backups[0].path()).unwrap();
+        assert_eq!(
+            backup
+                .query_row("SELECT MAX(version) FROM schema_migrations", [], |r| r
+                    .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        drop(backup);
+        drop(db);
+        for file in std::fs::read_dir(&dir).unwrap() {
+            std::fs::remove_file(file.unwrap().path()).unwrap();
+        }
+        std::fs::remove_dir(dir).unwrap();
     }
 }

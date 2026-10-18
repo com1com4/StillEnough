@@ -3565,6 +3565,7 @@ version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
+ "embed-resource",
  "hmac",
  "keyring",
  "reqwest 0.12.28",
@@ -3572,6 +3573,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha1",
+ "stillenough-core",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
@@ -3580,6 +3582,31 @@ dependencies = [
  "uuid",
  "winreg",
  "zeroize",
+]
+
+[[package]]
+name = "stillenough-cli"
+version = "0.2.0"
+dependencies = [
+ "chrono",
+ "serde_json",
+ "stillenough-core",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
+name = "stillenough-core"
+version = "0.2.0"
+dependencies = [
+ "chrono",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "uuid",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

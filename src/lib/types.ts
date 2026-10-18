@@ -137,3 +137,5 @@ export interface ExportSummary {
   accountCount: number;
   rowCount: number;
 }
+
+export interface AgentAccess { version: number; enabled: boolean; allowRefresh: boolean; allowOfflineCache: boolean; updatedAt: string | null; }

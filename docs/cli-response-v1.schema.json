@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StillEnoughCliResponseV1",
+  "type": "object",
+  "required": ["schemaVersion", "requestId", "command", "capturedAt", "transport", "instanceId", "revision", "outcome", "data", "errors", "warnings"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "requestId": {"type": "string"},
+    "command": {"type": "string"},
+    "capturedAt": {"type": "string", "format": "date-time"},
+    "transport": {"enum": ["ipc", "offline-cache", "local"]},
+    "instanceId": {"type": ["string", "null"]},
+    "revision": {"type": ["integer", "null"], "minimum": 0},
+    "outcome": {"enum": ["ok", "partial", "error"]},
+    "data": {
+      "type": "object",
+      "required": ["kind", "accounts", "providers", "checks", "operationId", "operationState", "metadata"],
+      "properties": {
+        "kind": {"enum": ["version", "providers", "accounts", "snapshot", "refresh", "operation", "diagnostics"]},
+        "accounts": {"type": "array", "items": {"$ref": "#/$defs/account"}},
+        "providers": {"type": "array", "items": {"$ref": "#/$defs/provider"}},
+        "checks": {"type": "array", "items": {"$ref": "#/$defs/check"}},
+        "operationId": {"type": ["string", "null"]},
+        "operationState": {"enum": [null, "running", "completed", "failed"]},
+        "metadata": {"type": "object", "additionalProperties": {"type": "string"}}
+      }
+    },
+    "errors": {"type": "array", "items": {"$ref": "#/$defs/error"}},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "status": {"enum": ["ok", "unknown", "expired", "auth-required", "forbidden", "api-changed", "rate-limited", "network-error", "unsupported", "busy", "paused", "error"]},
+    "nullableTime": {"type": ["string", "null"], "format": "date-time"},
+    "decimal": {"type": ["string", "null"], "pattern": "^-?[0-9]+(\\.[0-9]+)?$"},
+    "metric": {
+      "type": "object",
+      "required": ["metricId", "label", "kind", "unit", "remaining", "limit", "remainingPercent", "resetsAt", "source", "observedAt", "staleAfterSeconds", "freshness"],
+      "properties": {
+        "metricId": {"type": "string"}, "label": {"type": "string"},
+        "kind": {"enum": ["quota", "balance"]}, "unit": {"type": "string"},
+        "remaining": {"$ref": "#/$defs/decimal"}, "limit": {"$ref": "#/$defs/decimal"},
+        "remainingPercent": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "resetsAt": {"$ref": "#/$defs/nullableTime"},
+        "source": {"enum": ["official_api", "client_endpoint"]},
+        "observedAt": {"type": "string", "format": "date-time"},
+        "staleAfterSeconds": {"type": "integer", "minimum": 0},
+        "freshness": {"enum": ["current", "unknown", "expired"]}
+      },
+      "allOf": [{"if": {"properties": {"kind": {"const": "balance"}}}, "then": {"properties": {"remainingPercent": {"type": "null"}}}}]
+    },
+    "account": {
+      "type": "object",
+      "required": ["id", "providerId", "alias", "enabled", "status", "errorCode", "lastAttemptAt", "lastSuccessAt", "nextRetryAt", "refreshing", "metrics"],
+      "properties": {
+        "id": {"type": "string"}, "providerId": {"type": "string"}, "alias": {"type": "string"},
+        "enabled": {"type": "boolean"}, "status": {"$ref": "#/$defs/status"},
+        "errorCode": {"type": ["string", "null"]},
+        "lastAttemptAt": {"$ref": "#/$defs/nullableTime"}, "lastSuccessAt": {"$ref": "#/$defs/nullableTime"},
+        "nextRetryAt": {"$ref": "#/$defs/nullableTime"}, "refreshing": {"type": "boolean"},
+        "metrics": {"type": "array", "items": {"$ref": "#/$defs/metric"}}
+      }
+    },
+    "provider": {
+      "type": "object", "required": ["id", "name", "supported", "capability", "status", "limitation"],
+      "properties": {
+        "id": {"type": "string"}, "name": {"type": "string"}, "supported": {"type": "boolean"},
+        "capability": {"type": "string"}, "status": {"type": "string"}, "limitation": {"type": "string"}
+      }
+    },
+    "check": {
+      "type": "object", "required": ["name", "state", "code"],
+      "properties": {"name": {"type": "string"}, "state": {"enum": ["ok", "missing", "expired", "denied", "unchecked", "error"]}, "code": {"type": ["string", "null"]}}
+    },
+    "error": {
+      "type": "object", "required": ["code", "status", "scope", "accountId", "retryable", "nextRetryAt", "message"],
+      "properties": {
+        "code": {"type": "string"}, "status": {"$ref": "#/$defs/status"},
+        "scope": {"enum": ["request", "local-policy", "provider", "storage", "transport"]},
+        "accountId": {"type": ["string", "null"]}, "retryable": {"type": "boolean"},
+        "nextRetryAt": {"$ref": "#/$defs/nullableTime"}, "message": {"type": "string"}
+      }
+    }
+  }
+}

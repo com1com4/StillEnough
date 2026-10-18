@@ -21,12 +21,7 @@ impl Provider for CodexProvider {
         "cli_env"
     }
     fn descriptor(&self) -> ProviderDescriptor {
-        ProviderDescriptor { id: "codex", name: "Codex · app-server", supported: true, auth_method: "cli", base_urls: vec![SOURCE],
-            capability: "ChatGPT 订阅额度 · 客户端实际返回的窗口", status: "实验性 / 待真实账号验证",
-            limitation: "使用本机 Codex app-server 的只读 account/read 和 account/rateLimits/read。不读取 auth.json、不主动刷新令牌、不启动模型任务。仅支持 ChatGPT 订阅登录，同一来源限一个账号；切换登录后请重新测试。",
-            setup_instructions: "先安装并使用官方 Codex CLI 登录 ChatGPT 账号：\nnpm install -g @openai/codex\ncodex login\n尊重 CODEX_HOME。仅安装桌面版而没有 CLI 时需另行安装 CLI。",
-            authorization_label: "我授权应用启动本机 Codex app-server，只读查询当前登录账号的订阅额度",
-            network_note: "支持直连、自定义 HTTP 代理及系统环境/Windows 静态代理。Codex 子进程暂不支持应用指定的 SOCKS 代理。" }
+        stillenough_core::providers::descriptor("codex").expect("registered provider")
     }
     fn validate_url(&self, url: &str) -> Result<(), String> {
         if url == SOURCE {

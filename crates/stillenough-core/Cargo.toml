@@ -1,0 +1,18 @@
+[package]
+name = "stillenough-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+uuid = { version = "1", features = ["v4"] }
+
+rusqlite = { version = "0.32", features = ["bundled"] }
+tokio = { version = "1", features = ["net", "io-util", "time", "rt", "macros", "sync"] }
+sha2 = "0.10"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Threading", "Win32_System_Pipes", "Win32_UI_Shell", "Win32_System_Com", "Win32_Storage_FileSystem"] }

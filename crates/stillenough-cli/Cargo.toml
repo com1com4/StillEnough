@@ -1,0 +1,12 @@
+[package]
+name = "stillenough-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde_json = "1"
+stillenough-core = { path = "../stillenough-core" }
+tokio = { version = "1", features = ["rt", "net", "time", "macros"] }
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"

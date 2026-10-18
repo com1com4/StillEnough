@@ -18,6 +18,8 @@ function desktopCommand<T>(command: string, args?: Record<string, unknown>): Pro
 }
 
 export const api = {
+  agentAccess: () => desktopCommand<import("./types").AgentAccess>("get_agent_access"),
+  setAgentAccess: (value: import("./types").AgentAccess) => desktopCommand<import("./types").AgentAccess>("set_agent_access", { value }),
   networkSettings: () => desktopCommand<NetworkConfig>("get_network_settings"),
   saveNetworkSettings: (config: NetworkConfig) => desktopCommand<void>("save_network_settings", { config }),
   accounts: () => desktopCommand<Account[]>("list_accounts"),

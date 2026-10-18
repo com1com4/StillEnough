@@ -50,3 +50,12 @@
 - [x] 原开发历史与未提交改动保留，按当前目录导出发布副本。
 - [x] 发布副本清单/哈希/链接检查与自动检查结果已记录，Rust 有一个已有失败项，见 docs/RELEASE_CHECKLIST.md。
 - [ ] 独立副本首次提交与 GitHub 推送，不推送旧开发历史。
+
+## CLI P1（2026-10-18）
+
+- [x] 根 workspace、最小 core/CLI 边界、共享 Provider 描述投影、DTO/状态枚举；version/providers 本地表格与 JSON 命令。
+- [x] 实际检查与基线比较见 [CLI P1 记录](docs/CLI-P1.md)；pnpm 三项在沙箱外使用工作区 TEMP 后通过，Rust fmt/check/clippy 通过。
+- [x] 后续完整 Rust 复核：普通 Windows 用户环境全部通过（7 项真实环境专项仍忽略）；P1 历史失败保留在 CLI-P1.md，不覆盖历史结果。
+- [x] P2–P4：离线查询与 main-only UI 授权、严格 DACL Windows 管道、共用后台刷新/操作/诊断；自动化和 OS 管道证据见 CLI-IMPLEMENTATION.md。
+- [x] P5 本地分发工程：CLI scripts、cargo install、ZIP、npm wrapper/平台包、桌面 ZIP/NSIS sidecar 构建入口、使用文档。
+- [ ] P5 环境验收：干净 Windows 无 Node/WebView2、完整 NSIS 安装卸载/签名、提权/跨会话/远程对抗、远端 CI（本次未配置）；未发布公共 npm 包。

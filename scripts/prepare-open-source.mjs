@@ -31,13 +31,14 @@ const files = [
   "LICENSE", "CONTRIBUTING.md", "SECURITY.md", "THIRD_PARTY_NOTICES.md",
   "package.json", "pnpm-lock.yaml", "index.html", "eslint.config.js",
   "tsconfig.json", "tsconfig.node.json", "vite.config.ts", "vitest.config.ts",
-  "src-tauri/build.rs", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock", "src-tauri/tauri.conf.json",
+  "src-tauri/tests/test-manifest.rc", "src-tauri/tests/test-manifest.xml", "packaging/npm-cli/stillenough-cli.mjs", "src-tauri/build.rs", "src-tauri/Cargo.toml", "Cargo.lock", "Cargo.toml", "src-tauri/tauri.conf.json",
   "assets/brand/stillenough-logo-v15-azure-lime.png",
+  "docs/CLI.md", "docs/CLI-IMPLEMENTATION.md", "docs/CLI-DESIGN.md", "docs/CLI-P1.md", "docs/cli-response-v1.schema.json",
   "docs/PRODUCT.md", "docs/ARCHITECTURE.md", "docs/PROVIDERS.md",
   "docs/VERSIONING.md", "docs/OPEN_SOURCE.md", "docs/RELEASE_CHECKLIST.md", "docs/brand/README.md",
 ];
 const trees = [
-  "src", "src-tauri/src", "src-tauri/migrations", "src-tauri/capabilities", "src-tauri/icons",
+  "crates", "src", "src-tauri/src", "src-tauri/migrations", "src-tauri/capabilities", "src-tauri/icons",
   "scripts", "fixtures", "public/brand", "public/providers", "docs/providers", ".github",
 ];
 const blockedName = /^(?:\.git|node_modules|target|dist|output|\.local-archive|exports|\.env(?:\..*)?|auth\.json|\.?credentials\.json)$/i;
