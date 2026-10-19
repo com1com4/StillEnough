@@ -1,14 +1,6 @@
 import { providerName } from "../lib/providerPresentation";
 import { t } from "../lib/i18n";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import {
-  ArrowSquareOutIcon,
-  ArrowsClockwiseIcon,
-  CaretDownIcon,
-  CaretUpIcon,
-  PushPinIcon,
-  XIcon,
-} from "@phosphor-icons/react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { Menu } from "@tauri-apps/api/menu";
@@ -84,7 +76,7 @@ export function Widget({
     menuActions.current = {
       open: onOpen,
       refresh: onReload,
-      collapse: toggleCollapsed,
+      collapse: () => persist({ collapsed: !collapsed }),
       pin: () => persist({ pinned: !pinned }),
       hide: onHide,
       quit: () => {
@@ -168,9 +160,6 @@ export function Widget({
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [onHide]);
-  function toggleCollapsed() {
-    persist({ collapsed: !collapsed });
-  }
   return (
     <div
       ref={shell}
@@ -185,34 +174,6 @@ export function Widget({
         void showContextMenu(event.clientX, event.clientY);
       }}
     >
-      <div className="widget-drag" data-tauri-drag-region title={t("widget.drag")} />
-      <div className="widget-controls">
-        <button
-          onClick={() => persist({ pinned: !pinned })}
-          aria-label={pinned ? t("widget.unpin") : t("widget.pinned")}
-          aria-pressed={pinned}
-        >
-          <PushPinIcon weight={pinned ? "fill" : "regular"} />
-        </button>
-        <button onClick={toggleCollapsed} aria-label={collapsed ? t("widget.expand") : t("widget.collapse")}>
-          {collapsed ? <CaretDownIcon /> : <CaretUpIcon />}
-        </button>
-        <button
-          onClick={onReload}
-          disabled={!accounts.some((account) => !refreshState(account).disabled)}
-          aria-label={t("widget.refreshAgain")}
-        >
-          <ArrowsClockwiseIcon
-            className={accounts.some((account) => account.refreshing) ? "refresh-spinning" : ""}
-          />
-        </button>
-        <button onClick={onOpen} aria-label={t("widget.manager")}>
-          <ArrowSquareOutIcon />
-        </button>
-        <button onClick={onHide} aria-label={t("widget.hide")}>
-          <XIcon />
-        </button>
-      </div>
       {operationError && (
         <div className="widget-operation-note">
           {fetchStatusLabel(operationError)}
@@ -226,10 +187,10 @@ export function Widget({
         </div>
       )}
       {loading && !visibleAccounts.length ? (
-        <p className="widget-empty">{t("common.reading")}</p>
+        <p className="widget-empty" data-tauri-drag-region title={t("widget.drag")}>{t("common.reading")}</p>
       ) : !visibleAccounts.length ? (
         <div className="widget-message">
-          <strong>{t("account.noneAdded")}</strong>
+          <strong data-tauri-drag-region title={t("widget.drag")}>{t("account.noneAdded")}</strong>
           <button onClick={onOpen}>{t("widget.manager")}</button>
         </div>
       ) : (
@@ -238,13 +199,16 @@ export function Widget({
             <button
               className="widget-row"
               key={account.id}
-              onClick={onOpen}
+              onClick={(event) => {
+                if (event.target instanceof Element && event.target.closest(".widget-identity")) return;
+                onOpen();
+              }}
               title={t("widget.accountTitle", {
                 product: providerName(account.providerId, account.productName),
                 alias: account.alias,
               })}
             >
-              <span className="widget-identity">
+              <span className="widget-identity" data-tauri-drag-region title={t("widget.drag")}>
                 {display.showAlias && <small className="widget-alias">{account.alias}</small>}
                 <span className="widget-product">
                   <ProviderIcon product={account.productName} />
@@ -323,13 +287,13 @@ export function Widget({
           ))}
         </div>
       )}
-      <div className="widget-footer">
-        {visibleAccounts.length > display.maxAccounts && (
+      {visibleAccounts.length > display.maxAccounts && (
+        <div className="widget-footer">
           <button className="widget-more" onClick={onOpen}>
             {t("widget.moreAccounts", { count: visibleAccounts.length - display.maxAccounts })}
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

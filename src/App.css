@@ -2576,7 +2576,7 @@ html.widget-root #root {
 .metric-row > * {
   min-width: 0;
 }
-/* Hover toolbar overlays the first row to keep the widget compact. */
+/* Bound the compact widget and keep its quota rows scrollable. */
 .widget-shell {
   padding-top: 5px;
   padding-bottom: 3px;
@@ -2880,4 +2880,14 @@ body:not(.widget-body) #root {
 }
 @media (prefers-reduced-motion: reduce) {
   .widget-shell { transition: none; }
+}
+
+/* Reuse the platform identity column as a drag target without adding chrome. */
+.widget-identity[data-tauri-drag-region] {
+  cursor: move;
+  align-self: stretch;
+  user-select: none;
+}
+.widget-identity[data-tauri-drag-region] * {
+  pointer-events: none;
 }
