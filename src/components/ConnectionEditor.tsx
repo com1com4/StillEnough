@@ -1,4 +1,5 @@
 import { t, currentLanguage } from "../lib/i18n";
+import { ProductPicker } from "./ProductPicker";
 import { NetworkFields } from "./NetworkFields";
 import { useEffect, useRef, useState } from "react";
 import type { AccountInput, ProbeResult, ProviderDescriptor } from "../lib/types";
@@ -18,6 +19,7 @@ export function ConnectionEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const [choosing, setChoosing] = useState(!value.id);
   const [providers, setProviders] = useState<ProviderDescriptor[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -130,7 +132,12 @@ export function ConnectionEditor({
   }
   return (
     <div className="modal-backdrop">
-      <section className="editor-modal" role="dialog" aria-modal="true" aria-labelledby="connection-heading">
+      <section
+        className={`editor-modal ${choosing ? "product-picker-modal" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="connection-heading"
+      >
         <header className="modal-header">
           <div>
             <span className="eyebrow">ACCOUNT CONNECTION</span>
@@ -143,177 +150,203 @@ export function ConnectionEditor({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            void save();
+            if (!choosing) void save();
           }}
         >
           <div className="modal-scroll">
-            <p className="connection-flow">{t("connection.flow")}</p>
-            <fieldset disabled={busy} className="connection-fields">
-              <label>
-                {t("connection.product")}
-                <select
-                  required
-                  value={value.providerId}
-                  disabled={!!value.id}
-                  onChange={(e) => {
-                    const p = providers.find((p) => p.id === e.target.value);
+            {!value.id && (
+              <ol className="connection-steps" aria-label={t("connection.flow")}>
+                {[t("picker.select"), t("picker.configure"), t("picker.verify")].map((label, index) => (
+                  <li
+                    key={label}
+                    className={(choosing ? 0 : probe ? 2 : 1) === index ? "active" : ""}
+                    aria-current={(choosing ? 0 : probe ? 2 : 1) === index ? "step" : undefined}
+                  >
+                    <span>{index + 1}</span>
+                    {label}
+                  </li>
+                ))}
+              </ol>
+            )}
+            {choosing ? (
+              <ProductPicker
+                providers={selectableProviders}
+                selectedId={value.providerId}
+                onSelect={(p) => {
+                  if (p.id !== value.providerId)
                     update({
-                      providerId: e.target.value,
-                      baseUrl: p?.baseUrls[0] ?? "",
+                      providerId: p.id,
+                      baseUrl: p.baseUrls[0] ?? "",
                       enabled: false,
                       cliAuthorized: false,
                     });
-                  }}
-                >
-                  <option value="">{t("connection.chooseProduct")}</option>
-                  {selectableProviders.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {providerOptionLabel(p)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {selected && (
-                <details className="connection-capability connection-notes">
-                  <summary>
-                    {selected.capability}
-                    <span>{t("connection.details")}</span>
-                  </summary>
-                  <p>{selected.limitation}</p>
-                </details>
-              )}
-              {selected?.supported && (
-                <>
-                  <label>
-                    {t("account.alias")}
-                    <input
-                      required
-                      maxLength={80}
-                      value={value.alias}
-                      onChange={(e) => update({ alias: e.target.value })}
-                      placeholder={t("connection.aliasPlaceholder")}
-                    />
-                  </label>
-                  <details>
-                    <summary>{t("network.mode")}</summary>
-                    <NetworkFields
-                      value={value.network ?? { mode: "inherit", proxyUrl: "" }}
-                      onChange={(network) => update({ network })}
-                    />
-                    {isCli && <p className="settings-hint">{selected.networkNote}</p>}
-                  </details>
-                  {isCli ? (
-                    <div className="connection-capability">
-                      <strong>{t("connection.localLogin")}</strong>
-                      <pre>{selected.setupInstructions}</pre>
-                      <p>{t("connection.localHelp")}</p>
+                }}
+              />
+            ) : (
+              <>
+                <div className="connection-product-summary">
+                  <strong>{selected ? providerOptionLabel(selected) : t("connection.chooseProduct")}</strong>
+                  {!value.id && (
+                    <button
+                      type="button"
+                      className="button button-quiet"
+                      disabled={busy}
+                      onClick={() => {
+                        invalidate();
+                        setChoosing(true);
+                      }}
+                    >
+                      {t("picker.change")}
+                    </button>
+                  )}
+                </div>
+                <fieldset disabled={busy} className="connection-fields">
+                  {selected && (
+                    <details className="connection-capability connection-notes">
+                      <summary>
+                        {selected.capability}
+                        <span>{t("connection.details")}</span>
+                      </summary>
+                      <p>{selected.limitation}</p>
+                    </details>
+                  )}
+                  {selected?.supported && (
+                    <>
+                      <label>
+                        {t("account.alias")}
+                        <input
+                          required
+                          maxLength={80}
+                          value={value.alias}
+                          onChange={(e) => update({ alias: e.target.value })}
+                          placeholder={t("connection.aliasPlaceholder")}
+                        />
+                      </label>
+                      <details>
+                        <summary>{t("network.mode")}</summary>
+                        <NetworkFields
+                          value={value.network ?? { mode: "inherit", proxyUrl: "" }}
+                          onChange={(network) => update({ network })}
+                        />
+                        {isCli && <p className="settings-hint">{selected.networkNote}</p>}
+                      </details>
+                      {isCli ? (
+                        <div className="connection-capability">
+                          <strong>{t("connection.localLogin")}</strong>
+                          <pre>{selected.setupInstructions}</pre>
+                          <p>{t("connection.localHelp")}</p>
+                          <label className="connection-enable">
+                            <input
+                              type="checkbox"
+                              checked={value.cliAuthorized ?? false}
+                              onChange={(e) => update({ cliAuthorized: e.target.checked, enabled: false })}
+                            />
+                            <span>{selected.authorizationLabel}</span>
+                          </label>
+                        </div>
+                      ) : (
+                        <>
+                          <label>
+                            {t("connection.url")}
+                            <select
+                              value={value.baseUrl}
+                              onChange={(e) => update({ baseUrl: e.target.value })}
+                            >
+                              {selected.baseUrls.map((url) => (
+                                <option key={url} value={url}>
+                                  {url}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          {selected.authMethod === "access_key_pair" && (
+                            <label>
+                              AccessKey ID
+                              <input
+                                ref={accessKeyId}
+                                type="password"
+                                autoComplete="off"
+                                spellCheck={false}
+                                onChange={invalidate}
+                                placeholder={t("connection.accessIdPlaceholder")}
+                              />
+                            </label>
+                          )}
+                          <label>
+                            {value.id
+                              ? t("connection.replaceKey", { label: credentialLabel })
+                              : credentialLabel}
+                            <input
+                              ref={secret}
+                              type="password"
+                              autoComplete="off"
+                              spellCheck={false}
+                              onChange={invalidate}
+                              placeholder={
+                                value.id ? t("connection.keyStored") : t("connection.keyPlaceholder")
+                              }
+                            />
+                          </label>
+                          <p className="privacy-note">{t("connection.keyPrivacy")}</p>
+                        </>
+                      )}
                       <label className="connection-enable">
                         <input
                           type="checkbox"
-                          checked={value.cliAuthorized ?? false}
-                          onChange={(e) => update({ cliAuthorized: e.target.checked, enabled: false })}
+                          checked={value.enabled}
+                          onChange={(e) => update({ enabled: e.target.checked })}
                         />
-                        <span>{selected.authorizationLabel}</span>
+                        {isCli
+                          ? t("connection.enableCli")
+                          : value.id
+                            ? t("connection.enableApi")
+                            : t("connection.consent")}
                       </label>
-                    </div>
-                  ) : (
-                    <>
-                      <label>
-                        {t("connection.url")}
-                        <select value={value.baseUrl} onChange={(e) => update({ baseUrl: e.target.value })}>
-                          {selected.baseUrls.map((url) => (
-                            <option key={url} value={url}>
-                              {url}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      {selected.authMethod === "access_key_pair" && (
-                        <label>
-                          AccessKey ID
-                          <input
-                            ref={accessKeyId}
-                            type="password"
-                            autoComplete="off"
-                            spellCheck={false}
-                            onChange={invalidate}
-                            placeholder={t("connection.accessIdPlaceholder")}
-                          />
-                        </label>
-                      )}
-                      <label>
-                        {value.id ? t("connection.replaceKey", { label: credentialLabel }) : credentialLabel}
-                        <input
-                          ref={secret}
-                          type="password"
-                          autoComplete="off"
-                          spellCheck={false}
-                          onChange={invalidate}
-                          placeholder={value.id ? t("connection.keyStored") : t("connection.keyPlaceholder")}
-                        />
-                      </label>
-                      <p className="privacy-note">{t("connection.keyPrivacy")}</p>
+                      <p className="privacy-note">
+                        {isCli ? t("connection.cliTestHelp") : t("connection.apiTestHelp")}
+                      </p>
+                      <button
+                        type="button"
+                        className="button button-quiet"
+                        onClick={() => void test()}
+                        disabled={busy || (isCli && !value.cliAuthorized)}
+                      >
+                        {busy ? t("common.busy") : t("connection.test")}
+                      </button>
                     </>
                   )}
-                  <label className="connection-enable">
-                    <input
-                      type="checkbox"
-                      checked={value.enabled}
-                      onChange={(e) => update({ enabled: e.target.checked })}
-                    />
-                    {isCli
-                      ? t("connection.enableCli")
-                      : value.id
-                        ? t("connection.enableApi")
-                        : t("connection.consent")}
-                  </label>
-                  <p className="privacy-note">
-                    {isCli ? t("connection.cliTestHelp") : t("connection.apiTestHelp")}
-                  </p>
-                  <button
-                    type="button"
-                    className="button button-quiet"
-                    onClick={() => void test()}
-                    disabled={busy || (isCli && !value.cliAuthorized)}
-                  >
-                    {busy ? t("common.busy") : t("connection.test")}
-                  </button>
-                </>
-              )}
-            </fieldset>
-            <div ref={feedback} aria-live="polite" aria-busy={busy}>
-              {busy && (
-                <p className="privacy-note" role="status">
-                  {t("common.processing")}
-                </p>
-              )}
-              {error && (
-                <p className="connection-error" role="alert">
-                  {fetchStatusLabel(error)}
-                </p>
-              )}
-              {probe && (
-                <div className="connection-result" role="status">
-                  <strong>{isCli ? t("connection.cliSuccess") : t("connection.apiSuccess")}</strong>
-                  {probe.metrics.map((m) => (
-                    <p key={m.metricId}>
-                      {m.kind === "balance" ? balanceLabel(m) : metricLabel(m.label)}：
-                      {(m.kind === "balance" ? balanceText(m) : m.remaining) ??
-                        (m.remainingPercent != null
-                          ? t("metric.remainingPercent", {
-                              percent: Math.round(m.remainingPercent * 10) / 10,
-                            })
-                          : t("metric.unknown"))}
+                </fieldset>
+                <div ref={feedback} aria-live="polite" aria-busy={busy}>
+                  {busy && (
+                    <p className="privacy-note" role="status">
+                      {t("common.processing")}
                     </p>
-                  ))}
-                  <small>
-                    {t("observation.time")}
-                    {new Date(probe.observedAt).toLocaleString(currentLanguage())}{" "}
-                    {t("connection.testValidity")}
-                  </small>
+                  )}
+                  {probe && (
+                    <div className="connection-result" role="status">
+                      <strong>{isCli ? t("connection.cliSuccess") : t("connection.apiSuccess")}</strong>
+                      {probe.metrics.map((m) => (
+                        <p key={m.metricId}>
+                          {m.kind === "balance" ? balanceLabel(m) : metricLabel(m.label)}：
+                          {(m.kind === "balance" ? balanceText(m) : m.remaining) ??
+                            (m.remainingPercent != null
+                              ? t("metric.remainingPercent", {
+                                  percent: Math.round(m.remainingPercent * 10) / 10,
+                                })
+                              : t("metric.unknown"))}
+                        </p>
+                      ))}
+                      <small>
+                        {t("observation.time")}
+                        {new Date(probe.observedAt).toLocaleString(currentLanguage())}{" "}
+                        {t("connection.testValidity")}
+                      </small>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
+            {error && <p className="connection-error" role="alert">{fetchStatusLabel(error)}</p>}
             {selected && !selected.supported && (
               <p className="connection-error">{t("connection.noManual")}</p>
             )}
@@ -322,15 +355,26 @@ export function ConnectionEditor({
             <button type="button" className="button button-quiet" onClick={onClose}>
               {t("common.cancel")}
             </button>
-            <button
-              type="submit"
-              className="button button-primary"
-              disabled={
-                busy || !selected?.supported || (!value.id && !value.enabled) || (value.enabled && !probe)
-              }
-            >
-              {busy ? t("common.busy") : !value.id ? t("connection.addMonitor") : t("connection.save")}
-            </button>
+            {choosing ? (
+              <button
+                type="button"
+                className="button button-primary"
+                disabled={!selected?.supported}
+                onClick={() => setChoosing(false)}
+              >
+                {t("picker.next")}
+              </button>
+            ) : (
+              <button
+                type="submit"
+                className="button button-primary"
+                disabled={
+                  busy || !selected?.supported || (!value.id && !value.enabled) || (value.enabled && !probe)
+                }
+              >
+                {busy ? t("common.busy") : !value.id ? t("connection.addMonitor") : t("connection.save")}
+              </button>
+            )}
           </footer>
         </form>
       </section>
