@@ -2864,3 +2864,20 @@ body:not(.widget-body) #root {
 :is(.main-panel > .content-area, .sidebar > nav)::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Keep the whole widget subtle until the user points at it or uses the keyboard. */
+.widget-shell {
+  opacity: var(--widget-opacity, 1);
+  transition: opacity 180ms ease;
+}
+.widget-shell.fade-when-idle {
+  opacity: var(--widget-idle-opacity, 0.1);
+}
+.widget-shell.fade-when-idle:hover,
+.widget-shell.fade-when-idle:focus-visible,
+.widget-shell.fade-when-idle:has(:focus-visible) {
+  opacity: var(--widget-opacity, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .widget-shell { transition: none; }
+}

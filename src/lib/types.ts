@@ -60,6 +60,8 @@ export interface ProbeResult {
   observedAt: string;
 }
 export interface WidgetDisplay {
+  fadeWhenIdle: boolean;
+  idleOpacity: number;
   showAlias: boolean;
   showProgress: boolean;
   showReset: boolean;

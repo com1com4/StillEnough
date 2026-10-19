@@ -465,6 +465,13 @@ export const messages = {
     "调低后浮窗内容会整体变淡，便于看穿下面的窗口。",
     "Lower values make the widget more transparent so you can see windows underneath.",
   ],
+  "widget.idleOpacity": ["闲置不透明度", "Idle opacity"],
+  "widget.idleOpacityHelp": ["数值越低，平时越不显眼；最低 1%，避免完全找不到浮窗。", "Lower values make the idle widget less noticeable. The minimum is 1% so it remains findable."],
+  "widget.fadeWhenIdle": ["闲置时淡化", "Fade when idle"],
+  "widget.fadeWhenIdleHelp": [
+    "平时使用闲置不透明度，鼠标移入时恢复上方设置的透明度，移出后再次淡化。",
+    "Use idle opacity when idle. Hover to restore the opacity set above; move away to fade again.",
+  ],
   "widget.content": ["浮窗显示内容", "Widget content"],
   "widget.contentHelp": [
     "修改后立即保存。异常和过期状态始终显示。",

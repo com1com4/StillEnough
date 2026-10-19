@@ -80,7 +80,7 @@ const defaultSettings = (): AppSettings => ({
   widgetCollapsed: false,
   widgetPinned: true,
   widgetAccounts: null,
-  widgetDisplay: { showAlias: false, showProgress: true, showReset: true, maxAccounts: 4 },
+  widgetDisplay: { fadeWhenIdle: true, idleOpacity: 10, showAlias: false, showProgress: true, showReset: true, maxAccounts: 4 },
   theme: "system",
 });
 

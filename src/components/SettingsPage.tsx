@@ -289,6 +289,57 @@ export function SettingsPage({
             <span className="settings-hint">{settings.widgetOpacity}%</span>
           </div>
         </div>
+        <div className="settings-row">
+          <div>
+            <strong>{t("widget.fadeWhenIdle")}</strong>
+            <span>{t("widget.fadeWhenIdleHelp")}</span>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              aria-label={t("widget.fadeWhenIdle")}
+              checked={settings.widgetDisplay.fadeWhenIdle}
+              onChange={(event) =>
+                void onWidgetOptions({
+                  collapsed: settings.widgetCollapsed,
+                  pinned: settings.widgetPinned,
+                  opacity: settings.widgetOpacity,
+                  accounts: settings.widgetAccounts,
+                  display: { ...settings.widgetDisplay, fadeWhenIdle: event.target.checked },
+                })
+              }
+            />
+            <span>{t("widget.fadeWhenIdle")}</span>
+          </label>
+        </div>
+        {settings.widgetDisplay.fadeWhenIdle && (
+          <div className="settings-row">
+            <div>
+              <strong>{t("widget.idleOpacity")}</strong>
+              <span>{t("widget.idleOpacityHelp")}</span>
+            </div>
+            <div className="settings-inline">
+              <input
+                type="range"
+                aria-label={t("widget.idleOpacity")}
+                min={1}
+                max={100}
+                step={1}
+                value={settings.widgetDisplay.idleOpacity}
+                onChange={(event) =>
+                  void onWidgetOptions({
+                    collapsed: settings.widgetCollapsed,
+                    pinned: settings.widgetPinned,
+                    opacity: settings.widgetOpacity,
+                    accounts: settings.widgetAccounts,
+                    display: { ...settings.widgetDisplay, idleOpacity: Number(event.target.value) },
+                  })
+                }
+              />
+              <span className="settings-hint">{settings.widgetDisplay.idleOpacity}%</span>
+            </div>
+          </div>
+        )}
         <div className="settings-row column">
           <div>
             <strong>{t("widget.content")}</strong>

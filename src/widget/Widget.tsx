@@ -1,6 +1,6 @@
 import { providerName } from "../lib/providerPresentation";
 import { t } from "../lib/i18n";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   ArrowSquareOutIcon,
   ArrowsClockwiseIcon,
@@ -174,8 +174,11 @@ export function Widget({
   return (
     <div
       ref={shell}
-      className={`widget-shell ${collapsed ? "is-collapsed" : ""}`}
-      style={{ opacity: settings.widgetOpacity / 100 }}
+      className={`widget-shell ${collapsed ? "is-collapsed" : ""} ${display.fadeWhenIdle ? "fade-when-idle" : ""}`}
+      style={{
+        "--widget-opacity": settings.widgetOpacity / 100,
+        "--widget-idle-opacity": display.idleOpacity / 100,
+      } as CSSProperties}
       tabIndex={0}
       onContextMenu={(event) => {
         event.preventDefault();

@@ -355,6 +355,7 @@ pub fn set_widget_options(
     let mut next = current.clone();
     if let Some(mut display) = options.display {
         display.max_accounts = display.max_accounts.clamp(1, 8);
+        display.idle_opacity = display.idle_opacity.clamp(1, 100);
         next.widget_display = display;
     }
     next.widget_collapsed = options.collapsed;

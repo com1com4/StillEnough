@@ -80,3 +80,15 @@
 本次验证：普通 Windows 用户环境（2026-10-18），pnpm typecheck/lint/test/build 通过（版本脚本 1 项、前端 42 项）；cargo fmt/check（clippy 隐含编译）/clippy --workspace --all-targets --locked -- -D warnings 通过；cargo test --workspace --locked -- --test-threads=1 通过，共 126 项、7 项真实环境专项忽略。最初沙箱内 pnpm/TEMP/命名管道失败；工作区 TEMP 下并行 Rust 检查也发生 CLI 发现及网络子进程失败，改为默认系统 TEMP、普通用户环境串行复核后全部通过。未查询真实账号，未进行原生添加/刷新验收，未构建发布安装包。
 
 运行：pnpm tauri dev（桌面），pnpm dev（仅前端预览）；设置连接时按产品和地区选择独立入口，输入对应 API 或套餐 Key 并测试连接。下一步为新增地区账号与官方页面对照；GLM 钱包继续等待可靠接口契约。
+
+## 浮窗闲置淡化（2026-10-19）
+
+- [x] 设置增加“闲置时淡化”，默认开启；整体以可设置的闲置不透明度显示（1–100%，默认 10%），悬停或键盘聚焦恢复用户设置的透明度，移出后 180ms 淡化；减少动态效果偏好下不播放过渡。折叠状态同样生效。
+- [x] 复用后台 widgetDisplay 设置保存与跨窗口同步；旧设置补全默认值，关闭开关后保持原有固定透明度。
+- [ ] Windows 原生实测：悬停/移出、拖动后移出、右键菜单、折叠、重启恢复与多屏/DPI。视觉淡化不改变浮窗尺寸或鼠标命中范围。
+
+运行：pnpm tauri dev，设置页“闲置时淡化”开关；仅前端预览为 pnpm dev。
+
+检查：直接调用已安装工具，TypeScript、ESLint、Vite 构建、前端 42 项及版本脚本 1 项通过；cargo fmt 与 widget_display_tests 2 项通过；git diff --check 通过。pnpm 启动器锁文件写入受限，Vitest 首次系统 TEMP 失败，改用工作区 TEMP 后通过。Windows 原生视觉交互尚未实测。
+
+闲置不透明度可调补充：1–100%，默认 10%，后台保存及边界校验；直接调用已安装工具的 TypeScript、ESLint、前端 42 项和 Vite 构建通过，Rust 设置测试 3 项通过（首次新增测试缺少必填字段，补齐后通过）。原生悬停与滑块交互仍待实测。

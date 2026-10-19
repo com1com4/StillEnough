@@ -251,6 +251,7 @@ impl AppSettings {
         if !matches!(self.history_retention_days, 30 | 60 | 90) {
             self.history_retention_days = default_retention_days();
         }
+        self.widget_display.idle_opacity = self.widget_display.idle_opacity.clamp(1, 100);
         self.widget_display.max_accounts = self.widget_display.max_accounts.clamp(1, 8);
         self.widget_opacity = self
             .widget_opacity
@@ -269,6 +270,8 @@ impl AppSettings {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct WidgetDisplay {
+    pub fade_when_idle: bool,
+    pub idle_opacity: u8,
     pub show_alias: bool,
     pub show_progress: bool,
     pub show_reset: bool,
@@ -277,6 +280,8 @@ pub struct WidgetDisplay {
 impl Default for WidgetDisplay {
     fn default() -> Self {
         Self {
+            fade_when_idle: true,
+            idle_opacity: 10,
             show_alias: false,
             show_progress: true,
             show_reset: true,
@@ -485,14 +490,30 @@ mod widget_display_tests {
         let settings: AppSettings =
             serde_json::from_str(r#"{"refreshMinutes":10,"widgetVisible":true}"#).unwrap();
         assert_eq!(settings.widget_display.max_accounts, 4);
+        assert!(settings.widget_display.fade_when_idle);
+        assert_eq!(settings.widget_display.idle_opacity, 10);
         assert!(!settings.widget_display.show_alias);
         assert!(settings.widget_display.show_progress);
         assert!(settings.widget_display.show_reset);
     }
     #[test]
+    fn idle_opacity_defaults_for_existing_display_and_clamps_stored_values() {
+        let old: AppSettings =
+            serde_json::from_str(r#"{"refreshMinutes":10,"widgetVisible":true,"widgetDisplay":{"fadeWhenIdle":true,"showAlias":true}}"#)
+                .unwrap();
+        assert_eq!(old.widget_display.idle_opacity, 10);
+        for (stored, expected) in [(0, 1), (1, 1), (100, 100), (255, 100)] {
+            let mut settings = AppSettings::default();
+            settings.widget_display.idle_opacity = stored;
+            assert_eq!(settings.sanitize().widget_display.idle_opacity, expected);
+        }
+    }
+    #[test]
     fn display_preferences_survive_reload_and_limit_account_count() {
         let mut settings = AppSettings {
             widget_display: WidgetDisplay {
+                fade_when_idle: false,
+                idle_opacity: 25,
                 show_alias: true,
                 show_progress: false,
                 show_reset: false,
@@ -505,6 +526,8 @@ mod widget_display_tests {
             .unwrap()
             .sanitize();
         assert_eq!(restored.widget_display.max_accounts, 8);
+        assert!(!restored.widget_display.fade_when_idle);
+        assert_eq!(restored.widget_display.idle_opacity, 25);
         assert!(restored.widget_display.show_alias);
         assert!(!restored.widget_display.show_progress);
         assert!(!restored.widget_display.show_reset);
