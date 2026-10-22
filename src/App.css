@@ -1723,6 +1723,13 @@ body.widget-body #root {
 .widget-row:hover {
   background: var(--blue-soft);
 }
+/* Keep keyboard focus inside the row so the scroll container cannot clip it
+   into a stray horizontal line between accounts. */
+.widget-row:focus-visible {
+  outline: 1px solid var(--ring);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
 .widget-product {
   display: flex;
   align-items: center;
