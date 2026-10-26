@@ -48,6 +48,21 @@ fn number(v: &Value) -> Result<f64, FetchError> {
         .filter(|n| n.is_finite() && *n >= 0.0)
         .ok_or_else(invalid)
 }
+// The official Kimi CLI accepts counts encoded as strings as well as numbers.
+// Keep this scoped to Kimi; other providers retain their own field contracts.
+fn kimi_count(v: &Value) -> Result<f64, FetchError> {
+    if let Some(text) = v.as_str() {
+        if text.is_empty() || !text.bytes().all(|b| b.is_ascii_digit()) {
+            return Err(invalid());
+        }
+        return text
+            .parse::<f64>()
+            .ok()
+            .filter(|n| n.is_finite())
+            .ok_or_else(invalid);
+    }
+    number(v)
+}
 fn metric(
     id: String,
     label: String,
@@ -160,19 +175,37 @@ pub fn parse(id: &str, body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, Fetch
         for row in root["data"]["limits"].as_array().ok_or_else(invalid)? {
             let (kind, label) = match row["type"].as_str() {
                 Some("TOKENS_LIMIT") => ("tokens", "GLM Token 额度"),
+                Some("CREDIT_LIMIT") => ("credits", "GLM Credit 额度"),
                 Some("TIME_LIMIT") => ("tools", "GLM 工具调用额度"),
                 _ => continue,
             };
-            // Multiple rows of the same type cannot safely share an identity.
-            if result.iter().any(|m: &QuotaMetric| m.metric_id == kind) {
+            // Explicit units identify separate token/credit windows. Never infer
+            // the period from reset order: a weekly window may reset first.
+            let (key, label) = if kind != "tools" {
+                match (row["unit"].as_u64(), row["number"].as_u64()) {
+                    (Some(3), Some(hours)) if hours > 0 => (
+                        format!("{kind}_hours_{hours}"),
+                        format!("{} · {hours}小时额度", label.trim_end_matches(" 额度")),
+                    ),
+                    (Some(6), _) => (
+                        format!("{kind}_weekly"),
+                        format!("{} · 周额度", label.trim_end_matches(" 额度")),
+                    ),
+                    _ => (kind.to_owned(), label.to_owned()),
+                }
+            } else {
+                (kind.to_owned(), label.to_owned())
+            };
+            // Ambiguous or duplicate identities still fail instead of overwriting.
+            if result.iter().any(|m: &QuotaMetric| m.metric_id == key) {
                 return Err(invalid());
             }
             if row["percentage"].is_null() {
                 continue;
             }
             result.push(metric(
-                kind.into(),
-                label.into(),
+                key,
+                label,
                 100.0 - number(&row["percentage"])?,
                 &row["nextResetTime"],
                 now,
@@ -206,18 +239,18 @@ pub fn parse(id: &str, body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, Fetch
             if row["limit"].is_null() || (row["used"].is_null() && row["remaining"].is_null()) {
                 continue;
             }
-            let limit = number(&row["limit"])?;
+            let limit = kimi_count(&row["limit"])?;
             if limit == 0.0 {
                 continue;
             }
             let remaining = if row["remaining"].is_null() {
-                limit - number(&row["used"])?
+                limit - kimi_count(&row["used"])?
             } else {
-                number(&row["remaining"])?
+                kimi_count(&row["remaining"])?
             };
             if !row["used"].is_null()
                 && !row["remaining"].is_null()
-                && (number(&row["used"])? + remaining - limit).abs() > 0.000001
+                && (kimi_count(&row["used"])? + remaining - limit).abs() > 0.000001
             {
                 return Err(invalid());
             }
@@ -237,6 +270,72 @@ pub fn parse(id: &str, body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, Fetch
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn glm_explicit_windows_survive_reordering_without_guessing_periods() {
+        let mut body: Value = serde_json::from_slice(include_bytes!(
+            "../../../fixtures/providers/glm-coding-windows.json"
+        ))
+        .unwrap();
+        for id in ["glm_coding_cn", "glm_coding_intl"] {
+            let metrics = parse(id, body.to_string().as_bytes(), "now").unwrap();
+            assert_eq!(metrics.len(), 3);
+            assert_eq!(metrics[0].metric_id, "tokens_weekly");
+            assert_eq!(metrics[0].remaining_percent, Some(25.0));
+            assert_eq!(metrics[1].metric_id, "tokens_hours_5");
+            assert_eq!(metrics[1].remaining_percent, Some(80.0));
+            body["data"]["limits"].as_array_mut().unwrap().reverse();
+            let reversed = parse(id, body.to_string().as_bytes(), "now").unwrap();
+            for metric in &metrics {
+                let other = reversed
+                    .iter()
+                    .find(|m| m.metric_id == metric.metric_id)
+                    .unwrap();
+                assert_eq!(other.remaining_percent, metric.remaining_percent);
+                assert_eq!(other.resets_at, metric.resets_at);
+                assert_eq!(other.label, metric.label);
+            }
+            body["data"]["limits"].as_array_mut().unwrap().reverse();
+            let mut duplicate = body.clone();
+            duplicate["data"]["limits"][1] = duplicate["data"]["limits"][0].clone();
+            assert!(parse(id, duplicate.to_string().as_bytes(), "now").is_err());
+            let mut ambiguous = body.clone();
+            for row in ambiguous["data"]["limits"].as_array_mut().unwrap() {
+                row.as_object_mut().unwrap().remove("unit");
+            }
+            assert!(parse(id, ambiguous.to_string().as_bytes(), "now").is_err());
+            let mut missing = body.clone();
+            missing["data"]["limits"][0]["percentage"] = Value::Null;
+            let missing = parse(id, missing.to_string().as_bytes(), "now").unwrap();
+            assert!(!missing.iter().any(|m| m.metric_id == "tokens_weekly"));
+            let mut credit = body.clone();
+            credit["data"]["limits"][0]["type"] = "CREDIT_LIMIT".into();
+            let credit = parse(id, credit.to_string().as_bytes(), "now").unwrap();
+            assert_eq!(credit[0].metric_id, "credits_weekly");
+            assert_eq!(credit[0].kind, "quota");
+        }
+    }
+    #[test]
+    fn kimi_string_counts_preserve_remaining_and_validation() {
+        for id in ["kimi_coding_cn", "kimi_coding_intl"] {
+            let body = br#"{"usage":{"limit":"100","used":"20","remaining":"80"},"limits":[{"detail":{"limit":"50","remaining":"0"}}]}"#;
+            let metrics = parse(id, body, "now").unwrap();
+            assert_eq!(metrics[0].remaining_percent, Some(80.0));
+            assert_eq!(metrics[1].remaining_percent, Some(0.0));
+            assert!(metrics.iter().all(|m| m.resets_at.is_none()));
+            for body in [
+                r#"{"usage":{"limit":"100","used":"20","remaining":"90"}}"#,
+                r#"{"usage":{"limit":"100","used":"101"}}"#,
+                r#"{"usage":{"limit":"0","used":"0"}}"#,
+                r#"{"usage":{"limit":"100"}}"#,
+            ] {
+                assert!(parse(id, body.as_bytes(), "now").is_err());
+            }
+            for count in ["", "NaN", "inf", "-1", "1e2", " 20", "true"] {
+                let body = serde_json::json!({"usage":{"limit":"100","used":count}});
+                assert!(parse(id, body.to_string().as_bytes(), "now").is_err());
+            }
+        }
+    }
     #[test]
     fn wallets_keep_currency_and_negative_cash_separate_from_quota() {
         for (id, unit) in [

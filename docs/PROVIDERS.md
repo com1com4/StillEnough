@@ -1,5 +1,7 @@
 # 平台适配与验证
 
+2026-10-26 全部 16 个注册入口的源码契约核对、修复与未验证项见 [渠道读取核对记录](providers/channel-read-audit-2026-10-26.md)。这不是新增真实账号验证记录。
+
 更新：2026-10-18。原有平台验证记录如下，新地区入口与证据见后文；阿里百炼及新增地区入口在界面标为实验性。接入状态与真实账号验证范围分别记录，客户端内部接口不保证稳定。
 
 | 产品 / Provider ID | 接入状态 | 来源与指标 | 已记录的验证证据与限制 |
@@ -44,12 +46,16 @@ HTTP 使用统一网络服务；百炼 CLI 沿用自身环境，不支持显式�
 新增 `minimax_api_intl`、`minimax_token_plan_intl`、`glm_coding_cn`、`glm_coding_intl`、`kimi_coding_cn`、`kimi_coding_intl`。均为实验性，未使用真实账号验证；不得沿用旧 MiniMax 国内账号的成功结论。旧 MiniMax ID 和地址保持兼容，海外入口固定海外地址。
 
 - MiniMax 海外 API：`https://api.minimax.io/account/query_balance`；海外 Token Plan：`https://www.minimax.io/v1/token_plan/remains`。复用对应产品的既有解析与合成 fixture，不猜测币种。来源：[官方套餐页](https://platform.minimax.io/subscribe/token-plan)、[既有 API 来源](providers/minimax_api.md)。
-- GLM 国内 `https://open.bigmodel.cn`，海外 `https://api.z.ai`；GET `/api/monitor/usage/quota/limit`，Authorization 为原始套餐 Key，与官方插件一致。`TOKENS_LIMIT`、`TIME_LIMIT` 的 percentage 按已用百分比换算剩余；缺失不生成有效值，未知类型不猜测，重复类型拒绝解析，重置仅在 nextResetTime 存在时读取。不包含 API 钱包。来源：[官方插件固定提交 0446d0b](https://github.com/zai-org/zai-coding-plugins/blob/0446d0bb0bc537d97d3ab3664c4b8b9c4a0e1254/plugins/glm-plan-usage/skills/usage-query-skill/scripts/query-usage.mjs)。
+- GLM 国内 `https://open.bigmodel.cn`，海外 `https://api.z.ai`；GET `/api/monitor/usage/quota/limit`，Authorization 为原始套餐 Key，与官方插件一致。`TOKENS_LIMIT`、`TIME_LIMIT` 的 percentage 按已用百分比换算剩余；缺失不生成有效值，未知类型不猜测，重置仅在 nextResetTime 存在时读取。2026-10-26 补充显式 unit/number 多窗口及 CREDIT_LIMIT，按窗口身份判重，不按重置时间排序猜周期；详见上方核对记录。不包含 API 钱包。来源：[官方插件固定提交 0446d0b](https://github.com/zai-org/zai-coding-plugins/blob/0446d0bb0bc537d97d3ab3664c4b8b9c4a0e1254/plugins/glm-plan-usage/skills/usage-query-skill/scripts/query-usage.mjs)。
 - Kimi 国内 `https://api.kimi.com`，海外 `https://api.kimi.ai`；GET `/coding/v1/usages`，Bearer 订阅 Key。遵循官方 CLI 的 usage 与 limits/detail 中 limit、used/remaining 计数结构；零分母、缺字段、负数、矛盾计数、错误日期不伪造余量。没有月窗口就不补造；不读取浏览器认证或自动刷新 OAuth。来源：[官方 CLI 固定提交 9ab1286](https://github.com/MoonshotAI/kimi-cli/blob/9ab1286b8fe4e6bcd116949a27ce5e0ac3389c82/src/kimi_cli/ui/shell/usage.py)、[默认国内地址](https://github.com/MoonshotAI/kimi-cli/blob/9ab1286b8fe4e6bcd116949a27ce5e0ac3389c82/src/kimi_cli/auth/platforms.py)、[官方海外地址说明](https://www.kimi.com/code/docs/en/kimi-code/error-reference.html)。地区和套餐返回结构仍需真实账号对照。
 
 合成 fixture：`fixtures/providers/glm-coding.json`、`kimi-coding.json`；仅自动测试使用。统一 HTTP 层保留 401/403/429、重定向拒绝、超时和响应体大小限制；凭据继续使用系统凭据库。
 
 Context7 已查询，无匹配额度文档；以上使用官方源码和官方页面，不发送模型请求探测额度。
+
+### Kimi Code 国内报错核对（2026-10-26）
+
+用户反馈国内 Code 测试读取提示“接口变化”，尚未取得该次响应，未认定根因或记录读取成功。核对当前[官方 CLI 额度解析](https://github.com/MoonshotAI/kimi-cli/blob/main/src/kimi_cli/ui/shell/usage.py)与[平台地址](https://github.com/MoonshotAI/kimi-cli/blob/main/src/kimi_cli/auth/platforms.py)：国内仍为 GET `https://api.kimi.com/coding/v1/usages`、Bearer 认证。官方计数转换接受数字字符串；本地原解析仅接受 JSON 数字，存在兼容缺口。现为 Kimi 的 limit、used、remaining 增加非负整数字符串支持，保留缺字段、零分母、越界、矛盾计数和无效日期校验，不将缺失字段补成零。回归测试使用合成响应，不代表真实账号验证。Context7 本次已检索，未匹配额度契约；修复依据为官方源码，真实读取仍需复测。
 
 ### API 余额补充
 

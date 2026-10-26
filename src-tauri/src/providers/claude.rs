@@ -170,6 +170,7 @@ fn parse(body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, FetchError> {
         ("seven_day", "周额度"),
         ("seven_day_sonnet", "Sonnet 周额度"),
         ("seven_day_opus", "Opus 周额度"),
+        ("seven_day_fable", "Fable 周额度"),
         ("seven_day_oauth_apps", "OAuth 应用周额度"),
     ] {
         let w = &value[field];
@@ -184,6 +185,51 @@ fn parse(body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, FetchError> {
             now,
         )?);
     }
+    // New model-specific weekly limits supersede the corresponding legacy field.
+    // A surface-specific sublimit is not the whole model's weekly quota.
+    if let Some(limits) = value.get("limits").filter(|v| !v.is_null()) {
+        let mut seen = std::collections::HashSet::new();
+        for limit in limits
+            .as_array()
+            .ok_or_else(|| FetchError::new("schema_changed"))?
+        {
+            if limit["kind"] != "weekly_scoped"
+                || limit["group"] != "weekly"
+                || limit
+                    .pointer("/scope/surface")
+                    .is_some_and(|v| !v.is_null())
+            {
+                continue;
+            }
+            let model = limit
+                .pointer("/scope/model/display_name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .trim()
+                .to_ascii_lowercase();
+            let (field, label) = match model.as_str() {
+                "fable" => ("seven_day_fable", "Fable 周额度"),
+                "opus" => ("seven_day_opus", "Opus 周额度"),
+                "sonnet" => ("seven_day_sonnet", "Sonnet 周额度"),
+                _ => continue,
+            };
+            if !seen.insert(field) {
+                return Err(FetchError::new("schema_changed"));
+            }
+            let metric = super::subscription::window(
+                format!("claude_{field}"),
+                label.into(),
+                &limit["percent"],
+                super::subscription::iso_reset(&limit["resets_at"])?,
+                now,
+            )?;
+            if let Some(existing) = metrics.iter_mut().find(|m| m.metric_id == metric.metric_id) {
+                *existing = metric;
+            } else {
+                metrics.push(metric);
+            }
+        }
+    }
     if metrics.is_empty() {
         return Err(FetchError::new("schema_changed"));
     }
@@ -193,6 +239,41 @@ fn parse(body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, FetchError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn scoped_weekly_windows_override_legacy_without_including_surface_limits() {
+        let mut body: Value = serde_json::from_slice(include_bytes!(
+            "../../../fixtures/providers/claude-scoped-usage.json"
+        ))
+        .unwrap();
+        let metrics = parse(body.to_string().as_bytes(), "now").unwrap();
+        assert_eq!(metrics.len(), 3);
+        let opus = metrics
+            .iter()
+            .find(|m| m.metric_id == "claude_seven_day_opus")
+            .unwrap();
+        assert_eq!(opus.remaining_percent, Some(70.0));
+        assert!(opus.resets_at.is_some());
+        let fable = metrics
+            .iter()
+            .find(|m| m.metric_id == "claude_seven_day_fable")
+            .unwrap();
+        assert_eq!(fable.remaining_percent, Some(100.0));
+        assert!(fable.resets_at.is_none());
+        body.as_object_mut().unwrap().remove("five_hour");
+        body.as_object_mut().unwrap().remove("seven_day_opus");
+        assert_eq!(parse(body.to_string().as_bytes(), "now").unwrap().len(), 2);
+        for invalid in [Value::Null, serde_json::json!(101), serde_json::json!(-1)] {
+            let mut bad = body.clone();
+            bad["limits"][0]["percent"] = invalid;
+            assert!(parse(bad.to_string().as_bytes(), "now").is_err());
+        }
+        let mut duplicate = body.clone();
+        let row = duplicate["limits"][0].clone();
+        duplicate["limits"].as_array_mut().unwrap().push(row);
+        assert!(parse(duplicate.to_string().as_bytes(), "now").is_err());
+        body["limits"][0]["resets_at"] = "bad-date".into();
+        assert!(parse(body.to_string().as_bytes(), "now").is_err());
+    }
     #[test]
     fn fixture_preserves_windows_zero_and_missing_values() {
         let metrics = parse(

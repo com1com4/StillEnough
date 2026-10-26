@@ -1,5 +1,20 @@
 # 当前待办与验证
 
+## v0.4.3 版本更新（2026-10-26）
+
+- [x] 使用版本脚本同步 package.json、Rust workspace、桌面 Cargo.toml 和 Cargo.lock 三个本地包到 0.4.3；更新中英文 README 和版本说明 docs/releases/v0.4.3.md。
+- [x] 升版后版本一致性、版本脚本测试 1 项通过；解析修复的完整 Rust 测试与 Clippy 结果见下方核对记录。
+- [ ] GUI/CLI 新版本构建、便携打包、发布及真实账号复测尚未执行。
+
+## 渠道读取契约核对（2026-10-26）
+
+- [x] 逐项核对并记录 16 个注册入口的请求、认证、指标/窗口与证据缺口，见 [核对记录](docs/providers/channel-read-audit-2026-10-26.md)。
+- [x] Kimi 计数字符串兼容；GLM 显式多窗口与 CREDIT_LIMIT；Claude Fable 及新版模型周限额。新增合成 fixture 和解析回归，不引入缺失补零、猜币种或 reset 排序猜窗口。
+- [x] cargo fmt、Clippy --workspace --all-targets --locked -- -D warnings、git diff --check 通过。完整 cargo test --workspace --locked -- --test-threads=1 在普通 Windows 环境 130 项通过、7 项真实环境专项忽略。沙箱内 Provider 测试的百炼子进程用例失败，普通环境复核通过。
+- [ ] Kimi 国内实际读取、GLM 老/新套餐窗口、Claude 新旧模型窗口及 MiniMax 耗尽状态/周加成对照仍待真实账号验证。未运行桌面 UI、未构建或发布新版本。
+
+运行：pnpm tauri dev，在现有账号测试读取/刷新；不需要在聊天中提供凭据。
+
 ## v0.4.2 发布检查（2026-10-22）
 
 - [x] GUI、CLI、workspace 和 Cargo.lock 同步为 0.4.2，包含浮窗焦点框修复；说明见 docs/releases/v0.4.2.md。

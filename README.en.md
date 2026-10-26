@@ -21,7 +21,7 @@ An AI quota monitor and API balance tracker for the Windows desktop. Check remai
 - **Chinese and English UI**: choose the system language, Simplified Chinese, or English. The main window, widget, and tray share the locally saved preference.
 - **CLI / AI Agent access**: the GUI and CLI ship together. After authorization in the main window, query accounts and quotas or request a background refresh, with JSON output, timeouts, and explicit exit codes.
 
-The current version is **0.4.2**, in early development. This release fixes clipped focus outlines on widget account rows; see the [release notes (Chinese)](docs/releases/v0.4.2.md). Client endpoints may change. Validation coverage varies by plan and region, as described below.
+The current source version is **0.4.3**, in early development. This version adds parsing compatibility for Kimi string counts, multiple GLM quota windows, and Claude model-specific weekly limits; see the [release notes (Chinese)](docs/releases/v0.4.3.md). Client endpoints may change. Validation coverage varies by plan and region, as described below.
 
 ## Screenshots
 
