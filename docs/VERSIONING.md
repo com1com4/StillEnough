@@ -1,6 +1,6 @@
 # 版本管理
 
-`package.json` 的 `version` 是应用版本唯一编辑入口，当前为 `0.4.3`。侧栏和关于页在前端构建时读取它；Tauri 配置的 `version` 引用 `../package.json`。Rust workspace、桌面包及 Cargo.lock 中三个本地包的版本通过脚本同步。
+`package.json` 的 `version` 是应用版本唯一编辑入口，当前为 `0.4.4`。侧栏和关于页在前端构建时读取它；Tauri 配置的 `version` 引用 `../package.json`。Rust workspace、桌面包及 Cargo.lock 中三个本地包的版本通过脚本同步。
 
 ## 升级版本
 

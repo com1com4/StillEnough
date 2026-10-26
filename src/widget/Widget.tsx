@@ -14,14 +14,17 @@ import {
   refreshState,
   metricState,
   metricLabel,
-  widgetMetrics,
+  rotatingWidgetMetrics,
   resetLabel,
   shortLabel,
   fetchStatusLabel,
   metricSourceLabel,
+  percentText,
+  widgetMetricLabel,
 } from "../lib/presentation";
 import { ProviderIcon } from "../components/ProviderIcon";
 import { productBrand } from "../lib/brands";
+import { startWidgetRotation } from "../lib/widgetRotation";
 
 export function Widget({
   accounts,
@@ -41,6 +44,25 @@ export function Widget({
   onReload: () => void;
 }) {
   const [operationError, setOperationError] = useState("");
+  const [rotation, setRotation] = useState<Record<string, number>>({});
+  const hoveredAccount = useRef<string | null>(null);
+  const focusedAccount = useRef<string | null>(null);
+  const rotationAccounts = useRef(accounts);
+  useEffect(() => {
+    rotationAccounts.current = accounts;
+  }, [accounts]);
+  useEffect(() => {
+    return startWidgetRotation(
+      () => rotationAccounts.current.map((account) => account.id),
+      (id) => document.hidden || id === hoveredAccount.current || id === focusedAccount.current,
+      (ids) =>
+        setRotation((previous) => {
+          const next = { ...previous };
+          for (const id of ids) next[id] = (previous[id] ?? 0) + 1;
+          return next;
+        }),
+    );
+  }, []);
   const shell = useRef<HTMLDivElement>(null);
   const contextMenu = useRef<Menu | null>(null);
   const openingMenu = useRef(false);
@@ -164,10 +186,12 @@ export function Widget({
     <div
       ref={shell}
       className={`widget-shell ${collapsed ? "is-collapsed" : ""} ${display.fadeWhenIdle ? "fade-when-idle" : ""}`}
-      style={{
-        "--widget-opacity": settings.widgetOpacity / 100,
-        "--widget-idle-opacity": display.idleOpacity / 100,
-      } as CSSProperties}
+      style={
+        {
+          "--widget-opacity": settings.widgetOpacity / 100,
+          "--widget-idle-opacity": display.idleOpacity / 100,
+        } as CSSProperties
+      }
       tabIndex={0}
       onContextMenu={(event) => {
         event.preventDefault();
@@ -187,10 +211,14 @@ export function Widget({
         </div>
       )}
       {loading && !visibleAccounts.length ? (
-        <p className="widget-empty" data-tauri-drag-region title={t("widget.drag")}>{t("common.reading")}</p>
+        <p className="widget-empty" data-tauri-drag-region title={t("widget.drag")}>
+          {t("common.reading")}
+        </p>
       ) : !visibleAccounts.length ? (
         <div className="widget-message">
-          <strong data-tauri-drag-region title={t("widget.drag")}>{t("account.noneAdded")}</strong>
+          <strong data-tauri-drag-region title={t("widget.drag")}>
+            {t("account.noneAdded")}
+          </strong>
           <button onClick={onOpen}>{t("widget.manager")}</button>
         </div>
       ) : (
@@ -199,6 +227,18 @@ export function Widget({
             <button
               className="widget-row"
               key={account.id}
+              onMouseEnter={() => {
+                hoveredAccount.current = account.id;
+              }}
+              onMouseLeave={() => {
+                hoveredAccount.current = null;
+              }}
+              onFocus={(event) => {
+                if (event.currentTarget.matches(":focus-visible")) focusedAccount.current = account.id;
+              }}
+              onBlur={() => {
+                focusedAccount.current = null;
+              }}
               onClick={(event) => {
                 if (event.target instanceof Element && event.target.closest(".widget-identity")) return;
                 onOpen();
@@ -228,8 +268,8 @@ export function Widget({
                 </small>
               </span>
               <span className="widget-metrics">
-                {widgetMetrics(account).length ? (
-                  widgetMetrics(account).map((metric) => {
+                {rotatingWidgetMetrics(account, rotation[account.id] ?? 0).length ? (
+                  rotatingWidgetMetrics(account, rotation[account.id] ?? 0).map((metric) => {
                     const state = metricState(metric);
                     const unknown = state === "unknown";
                     return (
@@ -242,7 +282,7 @@ export function Widget({
                           {unknown
                             ? t("metric.noData")
                             : metric.kind === "quota"
-                              ? `${collapsed ? `${shortLabel(metric.label)} ` : ""}${state === "stale" ? t("metric.previousPrefix") : ""}${metric.remainingPercent}%`
+                              ? `${collapsed ? `${widgetMetricLabel(metric.label)} ` : ""}${state === "stale" ? t("metric.previousPrefix") : ""}${percentText(metric.remainingPercent!)}`
                               : balanceText(metric, "widget")}
                         </strong>
                         {!collapsed && display.showProgress && !unknown && metric.kind === "quota" && (
@@ -252,26 +292,31 @@ export function Widget({
                         )}
                         {!collapsed && (
                           <small>
-                            {unknown
-                              ? t("widget.notRecorded", {
-                                  label:
-                                    metric.kind === "balance"
-                                      ? balanceLabel(metric)
-                                      : shortLabel(metric.label),
-                                })
-                              : state === "stale"
-                                ? t("widget.staleMinutes", {
-                                    minutes:
-                                      Math.max(
-                                        0,
-                                        Math.floor((Date.now() - Date.parse(metric.observedAt)) / 60000),
-                                      ) || 0,
-                                  })
-                                : metric.kind === "quota"
-                                  ? `${shortLabel(metric.label)}${display.showReset ? ` · ${resetLabel(metric.resetsAt)}` : ""}`
-                                  : metric.kind === "balance"
-                                    ? t("metric.wallet")
-                                    : metric.label}
+                            {unknown ? (
+                              t("widget.notRecorded", {
+                                label:
+                                  metric.kind === "balance" ? balanceLabel(metric) : shortLabel(metric.label),
+                              })
+                            ) : state === "stale" ? (
+                              t("widget.staleMinutes", {
+                                minutes:
+                                  Math.max(
+                                    0,
+                                    Math.floor((Date.now() - Date.parse(metric.observedAt)) / 60000),
+                                  ) || 0,
+                              })
+                            ) : metric.kind === "quota" ? (
+                              <>
+                                <span>{widgetMetricLabel(metric.label)}</span>
+                                {display.showReset && (
+                                  <span className="widget-metric-reset">{resetLabel(metric.resetsAt)}</span>
+                                )}
+                              </>
+                            ) : metric.kind === "balance" ? (
+                              t("metric.wallet")
+                            ) : (
+                              metric.label
+                            )}
                           </small>
                         )}
                       </span>

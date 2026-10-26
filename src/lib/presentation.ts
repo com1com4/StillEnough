@@ -3,6 +3,24 @@ import { t, currentLanguage } from "./i18n";
 import { messages, type MessageKey } from "./locales";
 import { providerName } from "./providerPresentation";
 
+/** Format only the display; preserve the original observation for alerts/history. */
+export function percentText(value: number) {
+  return `${new Intl.NumberFormat(currentLanguage(), { maximumFractionDigits: 1 }).format(value)}%`;
+}
+
+export function widgetMetricLabel(label: string) {
+  return shortLabel(label.replace(/^Kimi 会员共享月额度$/, "共享月额度").replace(/^Kimi /, ""));
+}
+
+/** Keep rate windows fixed while sharing one slot between explicit monthly pools. */
+export function rotatingWidgetMetrics(account: Account, phase: number) {
+  const metrics = widgetMetrics(account);
+  const monthly = metrics.filter((m) => ["monthly_total", "monthly_code"].includes(m.metricId));
+  if (monthly.length < 2) return metrics;
+  const selected = monthly[phase % monthly.length];
+  return [...metrics.filter((metric) => !monthly.includes(metric)), selected];
+}
+
 /** Keep observed decimal text intact; only the widget hides an unknown currency. */
 export function balanceText(metric: QuotaMetric, surface: "main" | "widget" = "main") {
   if (metric.remaining === null) return null;

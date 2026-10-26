@@ -1,5 +1,13 @@
 # 平台适配与验证
 
+### Kimi 月额度补充（2026-10-26）
+
+用户实测主窗口和浮窗均只显示 5 小时额度，会员后台另有月额度。[官方会员规则](https://www.kimi.com/help/membership/membership-update-rules)明确：新套餐没有周限额，但新旧套餐均受共享月额度限制，因此不能要求每个账号都显示周窗口。
+
+核对[当前官方额度解析源码](https://github.com/MoonshotAI/kimi-code/blob/main/packages/oauth/src/managed-usage.ts)，新格式使用 `usages.limit_5h`、`limit_7d`、`limit_month_total`、`limit_month_code`，每项读取 0–1 已用比例 `used_ratio` 和 RFC3339 `reset_time`。已补解析会员共享月额度与 Code 月额度，以及新格式的 5 小时/周窗口；有效旧计数窗口优先，避免重复显示和被新格式覆盖。缺失项不生成额度。新老套餐、API Key 与 OAuth 的字段覆盖仍需实测，不能保证仅使用 Code Key 就能查询全部会员窗口。
+
+Context7 本次查得[官方本地 Server API 文档](https://www.kimi.com/code/docs/en/kimi-code-cli/reference/server-api.html)：`GET /api/v1/oauth/usage` 的完整额度需本地 CLI 服务与登录授权；该来源目前未接入，不读取浏览器凭据或复制其他 CLI 登录。当前修复只扩展现有只读接口的返回解析，没有新增认证来源。
+
 2026-10-26 全部 16 个注册入口的源码契约核对、修复与未验证项见 [渠道读取核对记录](providers/channel-read-audit-2026-10-26.md)。这不是新增真实账号验证记录。
 
 更新：2026-10-18。原有平台验证记录如下，新地区入口与证据见后文；阿里百炼及新增地区入口在界面标为实验性。接入状态与真实账号验证范围分别记录，客户端内部接口不保证稳定。

@@ -2333,7 +2333,9 @@ html.widget-root #root {
   background: var(--ink-3);
   cursor: pointer;
   vertical-align: middle;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 .settings-card input[type="checkbox"]::before {
   content: "";
@@ -2639,6 +2641,9 @@ html.widget-root #root {
 .widget-metric:last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
+.widget-metric-reset::before {
+  content: " · ";
+}
 .is-collapsed .widget-metric strong {
   white-space: normal;
   overflow-wrap: anywhere;
@@ -2709,16 +2714,47 @@ html.widget-root #root {
   margin-top: 2px;
 }
 
-.widget-alias { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
+.widget-alias {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 110px;
+}
 
-.widget-account-order { justify-content: space-between; min-width: 0; flex: 1 1 280px; max-width: 100%; }
-.widget-account-order > label { display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; }
-.widget-account-order > label > span { min-width: 0; overflow-wrap: anywhere; }
-.widget-order-actions { display: flex; gap: 4px; flex-shrink: 0; }
-.widget-order-actions .button { padding: 4px 6px; font-size: 11px; }
+.widget-account-order {
+  justify-content: space-between;
+  min-width: 0;
+  flex: 1 1 280px;
+  max-width: 100%;
+}
+.widget-account-order > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+}
+.widget-account-order > label > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.widget-order-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.widget-order-actions .button {
+  padding: 4px 6px;
+  font-size: 11px;
+}
 
 /* One account per row keeps ordering readable with any selected count. */
-.widget-account-list { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; }
+.widget-account-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
 .widget-account-list .widget-account-order {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto;
@@ -2728,14 +2764,43 @@ html.widget-root #root {
   padding: 8px 10px;
   cursor: default;
 }
-.widget-account-list .widget-account-order > label { flex: 1; }
-.widget-account-list .widget-order-actions .button { min-height: 28px; height: 28px; padding: 0 8px; line-height: 1; }
-.widget-drag-handle { padding: 0; width: 24px; height: 30px; border: 0; background: transparent; color: var(--ink-3); font-size: 22px; cursor: grab; touch-action: none; user-select: none; }
-.widget-drag-handle:active { cursor: grabbing; }
-.widget-drag-handle:disabled { opacity: .3; cursor: default; }
-.widget-account-order.is-dragging { opacity: .55; }
-.widget-account-order.drop-before { box-shadow: 0 -2px 0 var(--ink-2); }
-.widget-account-order.drop-after { box-shadow: 0 2px 0 var(--ink-2); }
+.widget-account-list .widget-account-order > label {
+  flex: 1;
+}
+.widget-account-list .widget-order-actions .button {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 8px;
+  line-height: 1;
+}
+.widget-drag-handle {
+  padding: 0;
+  width: 24px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 22px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.widget-drag-handle:active {
+  cursor: grabbing;
+}
+.widget-drag-handle:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.widget-account-order.is-dragging {
+  opacity: 0.55;
+}
+.widget-account-order.drop-before {
+  box-shadow: 0 -2px 0 var(--ink-2);
+}
+.widget-account-order.drop-after {
+  box-shadow: 0 2px 0 var(--ink-2);
+}
 
 .about-page {
   display: grid;
@@ -2886,7 +2951,9 @@ body:not(.widget-body) #root {
   opacity: var(--widget-opacity, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .widget-shell { transition: none; }
+  .widget-shell {
+    transition: none;
+  }
 }
 
 /* Reuse the platform identity column as a drag target without adding chrome. */

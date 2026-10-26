@@ -12,6 +12,9 @@ import {
   metricState,
   resetLabel,
   refreshState,
+  percentText,
+  widgetMetricLabel,
+  rotatingWidgetMetrics,
 } from "./presentation";
 import type { AlertEvent, QuotaMetric } from "./types";
 import type { Account } from "./types";
@@ -213,6 +216,28 @@ it("浮窗仅在新鲜主额度耗尽后显示备用，失败或过期时不切�
   expect(widgetMetrics({ ...account, fetchStatus: "network_error" }, now)).toEqual([main]);
   expect(widgetMetrics(account, now + 1201000)).toEqual([main]);
   expect(widgetMetrics({ ...account, metrics: [reserve] }, now)).toEqual([]);
+});
+
+it("只轮换月度额度，固定短时窗口并保留原始指标", () => {
+  const metrics = ["five_hour", "monthly_total", "monthly_code"].map((metricId) => ({
+    metricId,
+  })) as QuotaMetric[];
+  const account = { metrics } as Account;
+  expect(rotatingWidgetMetrics(account, 0).map((m) => m.metricId)).toEqual(["five_hour", "monthly_total"]);
+  expect(rotatingWidgetMetrics(account, 1).map((m) => m.metricId)).toEqual(["five_hour", "monthly_code"]);
+  expect(rotatingWidgetMetrics(account, 2).map((m) => m.metricId)).toEqual(["five_hour", "monthly_total"]);
+  expect(account.metrics).toHaveLength(3);
+  expect(rotatingWidgetMetrics({ metrics: metrics.slice(0, 2) } as Account, 1)).toEqual(metrics.slice(0, 2));
+});
+
+it("百分比消除浮点尾数，保留一位有效显示小数", () => {
+  expect(percentText(99.729999999)).toBe("99.7%");
+  expect(percentText(99.30000000000001)).toBe("99.3%");
+  expect(percentText(0)).toBe("0%");
+  expect(percentText(100)).toBe("100%");
+  expect(widgetMetricLabel("Kimi 5小时额度")).toBe("5h");
+  expect(widgetMetricLabel("Kimi Code 月额度")).toBe("Code 月");
+  expect(widgetMetricLabel("Kimi 会员共享月额度")).toBe("共享月");
 });
 
 it("各渠道额度名称统一为主窗口中文与浮窗短名称", () => {

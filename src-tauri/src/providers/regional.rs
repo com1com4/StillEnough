@@ -260,6 +260,44 @@ pub fn parse(id: &str, body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, Fetch
                 .unwrap_or(&Value::Null);
             result.push(metric(key, label, remaining / limit * 100.0, reset, now)?);
         }
+        // Current official CLI reads explicit ratio windows under `usages`.
+        // Prefer valid legacy counts for overlapping rate windows; never emit
+        // the same 5h/weekly window twice or infer missing monthly entries.
+        for (field, key, label) in [
+            ("limit_5h", "five_hour", "Kimi 5小时额度"),
+            ("limit_7d", "weekly", "Kimi 周额度"),
+            ("limit_month_total", "monthly_total", "Kimi 会员共享月额度"),
+            ("limit_month_code", "monthly_code", "Kimi Code 月额度"),
+        ] {
+            if result
+                .iter()
+                .any(|m| m.label == label || m.metric_id == key)
+            {
+                continue;
+            }
+            let Some(row) = root["usages"].get(field).filter(|v| !v.is_null()) else {
+                continue;
+            };
+            let value = &row["used_ratio"];
+            let ratio = if let Some(text) = value.as_str() {
+                if !super::deepseek::decimal(text) || text.starts_with('-') {
+                    return Err(invalid());
+                }
+                text.parse::<f64>().map_err(|_| invalid())?
+            } else {
+                number(value)?
+            };
+            if !ratio.is_finite() || !(0.0..=1.0).contains(&ratio) {
+                return Err(invalid());
+            }
+            result.push(metric(
+                key.into(),
+                label.into(),
+                (1.0 - ratio) * 100.0,
+                &row["reset_time"],
+                now,
+            )?);
+        }
     }
     if result.is_empty() {
         return Err(invalid());
@@ -270,6 +308,55 @@ pub fn parse(id: &str, body: &[u8], now: &str) -> Result<Vec<QuotaMetric>, Fetch
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn kimi_explicit_monthly_windows_are_separate_and_not_inferred() {
+        for id in ["kimi_coding_cn", "kimi_coding_intl"] {
+            let mut body = serde_json::json!({"usages":{
+                "limit_5h":{"used_ratio":0.2},
+                "limit_month_total":{"used_ratio":"0.4","reset_time":"2026-11-20T00:00:00Z"},
+                "limit_month_code":{"used_ratio":1.0}
+            }});
+            let metrics = parse(id, body.to_string().as_bytes(), "now").unwrap();
+            assert_eq!(metrics.len(), 3);
+            assert_eq!(metrics[0].remaining_percent, Some(80.0));
+            assert_eq!(metrics[1].metric_id, "monthly_total");
+            assert_eq!(metrics[1].remaining_percent, Some(60.0));
+            assert!(metrics[1].resets_at.is_some());
+            assert_eq!(metrics[2].remaining_percent, Some(0.0));
+            assert!(!metrics.iter().any(|m| m.metric_id == "weekly"));
+            body["usages"] = serde_json::json!({"limit_5h":{"used_ratio":0.2}});
+            assert_eq!(
+                parse(id, body.to_string().as_bytes(), "now").unwrap().len(),
+                1
+            );
+            body["usage"] = serde_json::json!({"limit":"100","used":"100"});
+            body["usages"]["limit_7d"] = serde_json::json!({"used_ratio":0});
+            let metrics = parse(id, body.to_string().as_bytes(), "now").unwrap();
+            assert_eq!(metrics.len(), 2);
+            assert_eq!(metrics[0].metric_id, "weekly");
+            assert_eq!(metrics[0].remaining_percent, Some(0.0));
+            body["limits"] = serde_json::json!([{"window":{"duration":300,"timeUnit":"MINUTE"},"detail":{"limit":100,"used":30}}]);
+            let metrics = parse(id, body.to_string().as_bytes(), "now").unwrap();
+            assert_eq!(metrics.len(), 2);
+            assert_eq!(metrics[1].remaining_percent, Some(70.0));
+            for ratio in [
+                serde_json::json!(-0.1),
+                serde_json::json!(1.1),
+                serde_json::json!("NaN"),
+                Value::Null,
+            ] {
+                let invalid =
+                    serde_json::json!({"usages":{"limit_month_total":{"used_ratio":ratio}}});
+                assert!(parse(id, invalid.to_string().as_bytes(), "now").is_err());
+            }
+            assert!(parse(
+                id,
+                br#"{"usages":{"limit_month_total":{"used_ratio":0.2,"reset_time":"bad"}}}"#,
+                "now"
+            )
+            .is_err());
+        }
+    }
     #[test]
     fn glm_explicit_windows_survive_reordering_without_guessing_periods() {
         let mut body: Value = serde_json::from_slice(include_bytes!(

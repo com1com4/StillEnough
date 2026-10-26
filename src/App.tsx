@@ -8,6 +8,7 @@ import {
   fetchStatusLabel,
   metricSourceLabel,
   refreshState,
+  percentText,
 } from "./lib/presentation";
 import { api } from "./lib/ipc";
 import type {
@@ -80,7 +81,14 @@ const defaultSettings = (): AppSettings => ({
   widgetCollapsed: false,
   widgetPinned: true,
   widgetAccounts: null,
-  widgetDisplay: { fadeWhenIdle: true, idleOpacity: 10, showAlias: false, showProgress: true, showReset: true, maxAccounts: 4 },
+  widgetDisplay: {
+    fadeWhenIdle: true,
+    idleOpacity: 10,
+    showAlias: false,
+    showProgress: true,
+    showReset: true,
+    maxAccounts: 4,
+  },
   theme: "system",
 });
 
@@ -817,7 +825,7 @@ function AccountCard({
                     </div>
                     <div className="metric-value">
                       <strong className={!stale && metric.remainingPercent! <= 20 ? "low-value" : ""}>
-                        {metric.remainingPercent}%
+                        {percentText(metric.remainingPercent!)}
                       </strong>
                       <span>{stale ? t("metric.previousRemaining") : t("metric.remaining")}</span>
                     </div>

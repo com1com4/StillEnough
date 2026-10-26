@@ -2,7 +2,7 @@
   "name": "stillenough",
   "private": true,
   "license": "MIT",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "type": "module",
   "packageManager": "pnpm@11.9.0",
   "scripts": {
