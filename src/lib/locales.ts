@@ -486,6 +486,8 @@ export const messages = {
   "widget.help": ["在桌面置顶查看关注账号。", "Keep selected accounts visible on your desktop."],
   "widget.hide": ["隐藏浮窗", "Hide widget"],
   "widget.show": ["显示浮窗", "Show widget"],
+  "widget.glass": ["浮窗毛玻璃（实验性）", "Frosted glass (experimental)"],
+  "widget.glassHelp": ["模糊浮窗背后的内容，可同时使用透明度和闲置淡化。", "Blurs content behind the widget and works with opacity and idle fading."],
   "widget.opacity": ["浮窗透明度", "Widget opacity"],
   "widget.opacityHelp": [
     "调低后浮窗内容会整体变淡，便于看穿下面的窗口。",

@@ -1,6 +1,6 @@
 [package]
 name = "stillenough"
-version = "0.4.4"
+version = "0.4.5"
 description = "Windows desktop monitor for AI subscription quotas and API balances"
 authors = ["StillEnough contributors"]
 license = "MIT"

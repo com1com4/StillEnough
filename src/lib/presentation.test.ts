@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  observationTime,
   balanceText,
   balanceLabel,
   widgetMetrics,
@@ -249,4 +250,20 @@ it("各渠道额度名称统一为主窗口中文与浮窗短名称", () => {
   expect(shortLabel("备用额度 · 周额度")).toBe("备用额度 · 周");
   expect(shortLabel("月额度")).toBe("月");
   expect(metricLabel("钱包余额")).toBe("钱包余额");
+});
+
+
+describe("浮窗更新时间", () => {
+  it("将带高精度和时区的时间格式化到本地，精确到分钟", () => {
+    const value = "2026-10-28T16:54:58.530484500+00:00";
+    const expected = new Intl.DateTimeFormat("zh-CN", {
+      year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    }).format(Date.parse(value));
+    expect(observationTime(value)).toBe(expected);
+    expect(observationTime(value)).not.toContain("530484500");
+  });
+  it("无法解析的时间明确显示未知", () => {
+    expect(observationTime("")).toBe("时间未知");
+    expect(observationTime("invalid")).toBe("时间未知");
+  });
 });

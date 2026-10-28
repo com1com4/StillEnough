@@ -60,6 +60,7 @@ export interface ProbeResult {
   observedAt: string;
 }
 export interface WidgetDisplay {
+  frostedGlass: boolean;
   fadeWhenIdle: boolean;
   idleOpacity: number;
   showAlias: boolean;

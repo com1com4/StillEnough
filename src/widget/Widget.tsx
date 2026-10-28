@@ -5,7 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { Menu } from "@tauri-apps/api/menu";
 import { listen } from "@tauri-apps/api/event";
-import { isTauri } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { Account, AppSettings, WidgetOptions } from "../lib/types";
 import { api } from "../lib/ipc";
 import {
@@ -19,12 +19,14 @@ import {
   shortLabel,
   fetchStatusLabel,
   metricSourceLabel,
+  observationTime,
   percentText,
   widgetMetricLabel,
 } from "../lib/presentation";
 import { ProviderIcon } from "../components/ProviderIcon";
 import { productBrand } from "../lib/brands";
 import { startWidgetRotation } from "../lib/widgetRotation";
+import { widgetGlassOpacity } from "../lib/widgetGlassOpacity";
 
 export function Widget({
   accounts,
@@ -64,6 +66,7 @@ export function Widget({
     );
   }, []);
   const shell = useRef<HTMLDivElement>(null);
+  const glassOpacityQueue = useRef(Promise.resolve());
   const contextMenu = useRef<Menu | null>(null);
   const openingMenu = useRef(false);
   const menuActions = useRef<Record<string, () => void>>({});
@@ -182,10 +185,38 @@ export function Widget({
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [onHide]);
+  useEffect(() => {
+    const element = shell.current;
+    if (!element || !display.frostedGlass || !isTauri()) return;
+    let disposed = false;
+    const update = () => {
+      if (disposed) return;
+      const interacting = element.matches(":hover, :focus-visible, :has(:focus-visible)");
+      const opacity = widgetGlassOpacity(settings.widgetOpacity, display.idleOpacity, display.fadeWhenIdle, interacting);
+      glassOpacityQueue.current = glassOpacityQueue.current.catch(() => {}).then(() =>
+        invoke<void>("set_widget_glass_opacity", { opacity }).catch((reason: unknown) => {
+          if (!disposed) setOperationError(String(reason));
+        }),
+      );
+    };
+    const updateAfterFocus = () => { queueMicrotask(update); };
+    update();
+    element.addEventListener("mouseenter", update);
+    element.addEventListener("mouseleave", update);
+    element.addEventListener("focusin", updateAfterFocus);
+    element.addEventListener("focusout", updateAfterFocus);
+    return () => {
+      disposed = true;
+      element.removeEventListener("mouseenter", update);
+      element.removeEventListener("mouseleave", update);
+      element.removeEventListener("focusin", updateAfterFocus);
+      element.removeEventListener("focusout", updateAfterFocus);
+    };
+  }, [display.frostedGlass, display.fadeWhenIdle, display.idleOpacity, settings.widgetOpacity]);
   return (
     <div
       ref={shell}
-      className={`widget-shell ${collapsed ? "is-collapsed" : ""} ${display.fadeWhenIdle ? "fade-when-idle" : ""}`}
+      className={`widget-shell ${collapsed ? "is-collapsed" : ""} ${!display.frostedGlass && display.fadeWhenIdle ? "fade-when-idle" : ""} ${display.frostedGlass ? "frosted-glass" : ""}`}
       style={
         {
           "--widget-opacity": settings.widgetOpacity / 100,
@@ -276,7 +307,7 @@ export function Widget({
                       <span
                         className={`widget-metric state-${state} ${!unknown && state === "current" && metric.kind === "quota" && metric.remainingPercent! <= 20 ? "is-low" : ""}`}
                         key={metric.metricId}
-                        title={`${metric.kind === "balance" ? balanceLabel(metric) : metricLabel(metric.label)} · ${metricSourceLabel(metric.source)} · ${metric.observedAt}`}
+                        title={`${metric.kind === "balance" ? balanceLabel(metric) : metricLabel(metric.label)} · ${metricSourceLabel(metric.source)} · ${t("observation.updated", { time: observationTime(metric.observedAt) })}`}
                       >
                         <strong>
                           {unknown

@@ -82,6 +82,7 @@ const defaultSettings = (): AppSettings => ({
   widgetPinned: true,
   widgetAccounts: null,
   widgetDisplay: {
+    frostedGlass: false,
     fadeWhenIdle: true,
     idleOpacity: 10,
     showAlias: false,

@@ -1,3 +1,5 @@
+mod widget_glass;
+
 use crate::{
     domain::models::{
         Account, AccountInput, AlertEvent, AppSettings, ExportSummary, HistorySeries,
@@ -375,15 +377,48 @@ pub fn set_widget_options(
     {
         next.widget_accounts = None;
     }
-    persist_settings(&state, &next)?;
+    let glass_changed = current.widget_display.frosted_glass != next.widget_display.frosted_glass;
+    let widget = app.get_webview_window("widget");
+    if glass_changed {
+        #[cfg(not(windows))]
+        if next.widget_display.frosted_glass {
+            return Err("浮窗毛玻璃仅支持 Windows".into());
+        }
+        if let Some(window) = &widget {
+            widget_glass::set(window, next.widget_display.frosted_glass)?;
+        }
+    }
+    if let Err(error) = persist_settings(&state, &next) {
+        if glass_changed {
+            if let Some(window) = &widget {
+                let _ = widget_glass::set(window, current.widget_display.frosted_glass);
+            }
+        }
+        return Err(error);
+    }
     *current = next.clone();
     drop(current);
-    if let Some(window) = app.get_webview_window("widget") {
-        // Only the parts the backend owns; opacity and collapse are the widget's own render.
+    if let Some(window) = widget {
         let _ = window.set_always_on_top(options.pinned);
     }
     publish(&app, &state);
     Ok(next)
+}
+
+#[tauri::command]
+pub fn set_widget_glass_opacity(
+    window: tauri::WebviewWindow,
+    state: State<'_, AppState>,
+    opacity: u8,
+) -> Result<(), String> {
+    if window.label() != "widget" {
+        return Err("forbidden".into());
+    }
+    let settings = lock(&state.settings)?;
+    if settings.widget_display.frosted_glass {
+        widget_glass::set_opacity(&window, opacity)?;
+    }
+    Ok(())
 }
 
 /// Creates the widget window hidden, with the drag-to-persist handler attached.
@@ -408,8 +443,27 @@ fn build_widget_window(app: &AppHandle) -> Result<tauri::WebviewWindow, String> 
     .resizable(false)
     .build()
     .map_err(|e| e.to_string())?;
+    let state = app.state::<AppState>();
+    let mut settings = lock(&state.settings)?;
+    if settings.widget_display.frosted_glass {
+        if let Err(error) = widget_glass::set(&window, true) {
+            eprintln!("浮窗毛玻璃不可用：{error}");
+            settings.widget_display.frosted_glass = false;
+            if let Err(error) = persist_settings(&state, &settings) {
+                eprintln!("无法保存浮窗回退设置：{error}");
+            }
+            publish(app, &state);
+        }
+    }
+    drop(settings);
     let handle = app.clone();
+    #[cfg(windows)]
+    let widget_hwnd = window.hwnd().map_err(|error| error.to_string())?.0 as isize;
     window.on_window_event(move |event| {
+        #[cfg(windows)]
+        if matches!(event, tauri::WindowEvent::Destroyed) {
+            widget_glass::forget(widget_hwnd);
+        }
         if let tauri::WindowEvent::Moved(position) = event {
             let position = (position.x, position.y);
             if position == (-32000, -32000) {

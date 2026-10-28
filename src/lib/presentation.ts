@@ -174,6 +174,20 @@ export function fetchStatusLabel(status: string): string {
   return status;
 }
 
+/** Display the observation time in the user's locale and local time zone. */
+export function observationTime(value: string): string {
+  const at = Date.parse(value);
+  if (!Number.isFinite(at)) return t("time.unknown");
+  return new Intl.DateTimeFormat(currentLanguage(), {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(at);
+}
+
 export function metricSourceLabel(source: QuotaMetric["source"]): string {
   return source === "client_endpoint" ? t("source.client") : t("source.official");
 }

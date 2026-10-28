@@ -265,6 +265,16 @@ export function SettingsPage({
           </button>
         </div>
         <div className="settings-row">
+          <div><strong>{t("widget.glass")}</strong><span>{t("widget.glassHelp")}</span></div>
+          <label className="switch">
+            <input type="checkbox" checked={settings.widgetDisplay.frostedGlass} onChange={(event) =>
+              void onWidgetOptions({ collapsed: settings.widgetCollapsed, pinned: settings.widgetPinned,
+                opacity: settings.widgetOpacity, accounts: settings.widgetAccounts,
+                display: { ...settings.widgetDisplay, frostedGlass: event.target.checked } })} />
+            <span>{settings.widgetDisplay.frostedGlass ? t("common.enabled") : t("common.disabled")}</span>
+          </label>
+        </div>
+        <div className="settings-row">
           <div>
             <strong>{t("widget.opacity")}</strong>
             <span>{t("widget.opacityHelp")}</span>

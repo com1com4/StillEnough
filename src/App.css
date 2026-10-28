@@ -3192,3 +3192,23 @@ body:not(.widget-body) #root {
     margin-bottom: 12px;
   }
 }
+
+/* Native acrylic is window-wide; keep the content legible above it. */
+.widget-shell.frosted-glass {
+  --widget-glass-hover: rgba(47, 111, 181, 0.08);
+  --ink-2: #50515e;
+  --blue-text: #28649d;
+  background: color-mix(in srgb, var(--panel-2) 75%, transparent);
+  border-radius: 8px;
+  opacity: 1;
+}
+[data-theme="dark"] .widget-shell.frosted-glass {
+  --widget-glass-hover: rgba(177, 210, 237, 0.09);
+  --ink-2: #d0d1da;
+  --blue-text: #9bcef2;
+  background: color-mix(in srgb, var(--panel-2) 78%, transparent);
+}
+.widget-shell.frosted-glass .widget-row:hover {
+  background: var(--widget-glass-hover);
+  border-radius: 4px;
+}

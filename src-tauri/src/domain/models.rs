@@ -270,6 +270,7 @@ impl AppSettings {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct WidgetDisplay {
+    pub frosted_glass: bool,
     pub fade_when_idle: bool,
     pub idle_opacity: u8,
     pub show_alias: bool,
@@ -280,6 +281,7 @@ pub struct WidgetDisplay {
 impl Default for WidgetDisplay {
     fn default() -> Self {
         Self {
+            frosted_glass: false,
             fade_when_idle: true,
             idle_opacity: 10,
             show_alias: false,
@@ -490,6 +492,7 @@ mod widget_display_tests {
         let settings: AppSettings =
             serde_json::from_str(r#"{"refreshMinutes":10,"widgetVisible":true}"#).unwrap();
         assert_eq!(settings.widget_display.max_accounts, 4);
+        assert!(!settings.widget_display.frosted_glass);
         assert!(settings.widget_display.fade_when_idle);
         assert_eq!(settings.widget_display.idle_opacity, 10);
         assert!(!settings.widget_display.show_alias);
@@ -512,6 +515,7 @@ mod widget_display_tests {
     fn display_preferences_survive_reload_and_limit_account_count() {
         let mut settings = AppSettings {
             widget_display: WidgetDisplay {
+                frosted_glass: true,
                 fade_when_idle: false,
                 idle_opacity: 25,
                 show_alias: true,
@@ -526,6 +530,7 @@ mod widget_display_tests {
             .unwrap()
             .sanitize();
         assert_eq!(restored.widget_display.max_accounts, 8);
+        assert!(restored.widget_display.frosted_glass);
         assert!(!restored.widget_display.fade_when_idle);
         assert_eq!(restored.widget_display.idle_opacity, 25);
         assert!(restored.widget_display.show_alias);

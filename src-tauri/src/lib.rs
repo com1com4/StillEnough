@@ -263,6 +263,7 @@ pub fn run() {
             commands::set_language,
             commands::sync_native_theme,
             commands::set_widget_options,
+            commands::set_widget_glass_opacity,
             commands::set_widget_visible,
             commands::open_main_window,
             commands::quit_app,
