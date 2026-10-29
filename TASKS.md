@@ -4,8 +4,9 @@
 
 - [x] 使用版本脚本同步 GUI、CLI、workspace 和 Cargo.lock 本地包到 0.4.5；更新中英文 README、版本管理和版本说明。
 - [x] 版本一致性与版本脚本测试、TypeScript、ESLint、Vite 构建及前端测试 53 项通过；cargo fmt、Clippy 和普通 Windows 环境 Rust 工作区测试 131 项通过、7 项真实环境专项忽略。
-- [x] GUI 和 CLI release 构建完成，GUI 文件版本与 CLI --version 均为 0.4.5；未执行便携打包。
-- [ ] 未发布或推送；正式浮窗 Windows 交互和干净环境验证待完成。
+- [x] GUI 和 CLI release 构建完成，GUI 文件版本与 CLI --version 均为 0.4.5；便携 ZIP 的 x64 架构、8 文件白名单、逐文件哈希及 SHA256SUMS 校验通过。
+- [x] 提交 225270d、标签 v0.4.5 和 GitHub Release 已发布；远端 ZIP 与校验文件哈希核对一致。
+- [ ] 正式浮窗 Windows 交互和干净环境验证待完成。
 
 
 ## 浮窗更新时间提示（2026-10-29）
